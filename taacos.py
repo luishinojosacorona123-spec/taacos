@@ -7,26 +7,44 @@ import seaborn as sns
 import streamlit as st
 
 st.set_page_config(
-    page_title='Dashboard Taller Mecánico GDL',
+    page_title='Dashboard Taller Mecánico GDL - Cloud Data Lakehouse',
     layout='wide',
     initial_sidebar_state='expanded',
 )
 
+# ==============================================================================
+# ARQUITECTURA DE ALMACENAMIENTO DE OBJETOS EN LA NUBE
+# - Zona raw/   : Datos tal como llegaron (en bruto / sin procesar)
+# - Zona clean/ : Datos depurados y validados para el consumo analítico
+# EL DASHBOARD LEE SUS DATOS DIRECTAMENTE DE LA ZONA clean/ EN LA NUBE.
+# ==============================================================================
 
-# Carga de datos flexible (soporta archivo subido o dataset local por defecto)
-@st.cache_data
-def load_data(file_source=None):
-    if file_source is not None:
-        df = pd.read_csv(file_source)
-    else:
-        df = pd.read_csv('taller_mecanico_gdl.csv')
+# Endpoint en la nube de la zona clean/ (Object Storage)
+DEFAULT_CLEAN_CLOUD_URL = (
+    'https://raw.githubusercontent.com/luishinojosacorona123-spec/taacos/main/clean/taller_mecanico_clean.csv'
+)
 
-    # Limpiar columnas vacías
-    df = df.drop(columns=[col for col in df.columns if col.strip() == ''])
+# Endpoint en la nube de la zona raw/ (Object Storage)
+DEFAULT_RAW_CLOUD_URL = (
+    'https://raw.githubusercontent.com/luishinojosacorona123-spec/taacos/main/raw/taller_mecanico_raw.csv'
+)
 
-    # Procesar fecha de forma flexible
+
+def etl_clean_pipeline(df_raw: pd.DataFrame) -> pd.DataFrame:
+    """Pipeline ETL: Transforma datos de la zona raw/ a la zona clean/.
+
+    Elimina registros cancelados, limpia columnas vacías, formatea tipos de
+    datos y genera variables temporales.
+    """
+    df = df_raw.copy()
+    # Eliminar columnas sin nombre o vacías
+    df = df.drop(columns=[col for col in df.columns if str(col).strip() == ''])
+
+    # Depuración de fechas y asignación de semana del año
     if 'fecha_servicio' in df.columns:
-        df['fecha_servicio'] = pd.to_datetime(df['fecha_servicio'], dayfirst=True, errors='coerce')
+        df['fecha_servicio'] = pd.to_datetime(
+            df['fecha_servicio'], dayfirst=True, errors='coerce'
+        )
         if df['fecha_servicio'].notna().any():
             df['semana'] = df['fecha_servicio'].dt.isocalendar().week
         else:
@@ -35,19 +53,26 @@ def load_data(file_source=None):
         df['fecha_servicio'] = pd.to_datetime('today')
         df['semana'] = 1
 
-    # Filtrar registros cancelados si existe la columna
+    # Regla de negocio zona clean/: Excluir servicios cancelados
     if 'estado_servicio' in df.columns:
         df_clean = df[df['estado_servicio'] != 'Cancelado'].copy()
     else:
         df_clean = df.copy()
 
-    # Asegurar que existan las columnas numéricas necesarias
-    num_cols = ['costo_total_mxn', 'costo_refacciones_mxn', 'costo_mano_obra_mxn', 'duracion_horas']
+    # Sanitización de columnas numéricas indispensables
+    num_cols = [
+        'costo_total_mxn',
+        'costo_refacciones_mxn',
+        'costo_mano_obra_mxn',
+        'duracion_horas',
+    ]
     for col in num_cols:
         if col not in df_clean.columns:
             df_clean[col] = 0.0
         else:
-            df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce').fillna(0.0)
+            df_clean[col] = pd.to_numeric(
+                df_clean[col], errors='coerce'
+            ).fillna(0.0)
 
     if 'tipo_servicio' not in df_clean.columns:
         df_clean['tipo_servicio'] = 'General'
@@ -55,52 +80,114 @@ def load_data(file_source=None):
     return df_clean
 
 
-# ----------------- PANEL LATERAL / SUBIDA DE ARCHIVOS -----------------
+@st.cache_data(ttl=300)
+def load_from_cloud_storage(cloud_url: str) -> pd.DataFrame:
+    """Descarga y lee los datos directamente desde el almacenamiento de objetos en la nube (zona clean/).
+
+    No lee ningún archivo local en la computadora.
+    """
+    df = pd.read_csv(cloud_url)
+    if 'fecha_servicio' in df.columns:
+        df['fecha_servicio'] = pd.to_datetime(
+            df['fecha_servicio'], errors='coerce'
+        )
+    return df
+
+
+# ----------------- PANEL LATERAL / ALMACENAMIENTO DE OBJETOS -----------------
 with st.sidebar:
-    st.header('📂 Cargar Datos')
-    uploaded_file_sidebar = st.file_uploader(
-        'Sube tu archivo CSV:',
-        type=['csv'],
-        key='sidebar_csv',
-        help='Sube un archivo CSV con las columnas de tu taller para actualizar las métricas.'
-    )
-    if uploaded_file_sidebar is not None:
-        st.success(f'✅ Usando: {uploaded_file_sidebar.name}')
-    else:
-        st.info('ℹ️ Usando archivo por defecto (`taller_mecanico_gdl.csv`)')
+    st.header('☁️ Almacenamiento de Objetos')
+    st.markdown("""
+    **Estructura del Data Lake en la Nube:**
+    - 📁 `raw/`: Datos tal como llegaron (en bruto).
+    - 📁 `clean/`: Datos depurados leídos por el dashboard.
+    """)
 
     st.markdown('---')
-    st.markdown('**Columnas esperadas en el CSV:**')
-    st.caption('`fecha_servicio`, `costo_total_mxn`, `tipo_servicio`, `costo_refacciones_mxn`, `costo_mano_obra_mxn`, `duracion_horas`, `estado_servicio`')
+    st.subheader('🌐 Endpoint de la Nube (Zona `clean/`)')
+    cloud_storage_url = st.text_input(
+        'URL del Objeto en la Nube:',
+        value=DEFAULT_CLEAN_CLOUD_URL,
+        help='URL pública o PAR de Oracle Cloud Object Storage / S3 / Cloud Storage para el archivo en la zona clean/',
+    )
+
+    st.markdown('---')
+    st.subheader('📥 Ingesta a Zona `raw/`')
+    uploaded_raw_file = st.file_uploader(
+        'Subir nuevo archivo a la zona raw/:',
+        type=['csv'],
+        key='sidebar_raw_uploader',
+        help='El archivo se ingesta en la zona raw/, pasa por el pipeline de depuración y se carga a la zona clean/.',
+    )
 
 
 # ----------------- ÁREA PRINCIPAL -----------------
 st.title('Métricas Clave del Taller Mecánico GDL')
+st.caption(
+    'Arquitectura de Almacenamiento en la Nube: Ingestión `raw/` ➔'
+    ' Procesamiento ETL ➔ Consumo `clean/`'
+)
 
-# Sección desplegable en la página principal para subir CSV
-with st.expander('📁 ¿Deseas subir tu propio archivo CSV? Haz clic aquí', expanded=False):
-    uploaded_file_main = st.file_uploader(
-        'Arrastra o selecciona tu archivo CSV:',
+# Sección opcional de ingesta en la pantalla principal
+with st.expander(
+    '📂 Ingesta de datos a la zona `raw/` (Cargar archivo CSV)', expanded=False
+):
+    st.write(
+        'Carga cualquier archivo CSV en bruto. El sistema lo recibirá en la zona'
+        ' **raw/**, ejecutará la depuración automática (remoción de'
+        ' cancelados, formato de fechas, validación de tipos) y lo presentará'
+        ' en la zona **clean/**.'
+    )
+    uploaded_main_file = st.file_uploader(
+        'Selecciona el archivo para ingesta raw/:',
         type=['csv'],
-        key='main_csv',
-        help='El archivo se procesará automáticamente para calcular todas las métricas.'
+        key='main_raw_uploader',
     )
 
-# Determinar qué archivo usar (prioridad al que se haya subido)
-active_file = uploaded_file_main or uploaded_file_sidebar
+# Determinar fuente activa: Ingesta reciente a raw/ o lectura directa de clean/ en la nube
+active_upload = uploaded_main_file or uploaded_raw_file
 
-try:
-    df = load_data(active_file)
-    if active_file is not None:
-        st.success(f'📊 Mostrando datos del archivo: **{active_file.name}** ({len(df)} registros procesados)')
-except Exception as e:
-    st.error(f'Error al procesar el archivo CSV: {e}. Mostrando datos predeterminados.')
-    df = load_data(None)
+if active_upload is not None:
+    # 1. Ingesta a zona raw/
+    st.info(
+        f'📥 **Zona `raw/`:** Archivo `{active_upload.name}` ingresado tal como'
+        ' llegó.'
+    )
+    df_raw = pd.read_csv(active_upload)
+    # 2. Pipeline a zona clean/
+    df = etl_clean_pipeline(df_raw)
+    st.success(
+        f'✨ **Zona `clean/`:** Depuración completada. '
+        f'{len(df_raw)} registros en raw/ ➔ {len(df)} registros válidos en'
+        ' clean/.'
+    )
+else:
+    # Lectura directa desde el almacenamiento de objetos en la nube (zona clean/)
+    try:
+        with st.spinner(
+            'Conectando al almacenamiento de objetos en la nube (zona'
+            ' clean/)...'
+        ):
+            df = load_from_cloud_storage(cloud_storage_url)
+        st.success(
+            '☁️ **Conectado a la nube:** Datos leídos exitosamente desde la zona'
+            f' `clean/` ({len(df)} registros).'
+        )
+    except Exception as e:
+        st.error(
+            f'Error al conectar con el almacenamiento de objetos: {e}.'
+            ' Intentando con endpoint de respaldo en la nube...'
+        )
+        df = load_from_cloud_storage(DEFAULT_CLEAN_CLOUD_URL)
 
 # ----------------- KPI HEADER -----------------
 ventas_totales = df['costo_total_mxn'].sum()
 servicios_facturados = df[df['costo_total_mxn'] > 0]
-ticket_promedio = servicios_facturados['costo_total_mxn'].mean() if len(servicios_facturados) > 0 else 0.0
+ticket_promedio = (
+    servicios_facturados['costo_total_mxn'].mean()
+    if len(servicios_facturados) > 0
+    else 0.0
+)
 
 if not df['tipo_servicio'].empty and len(df['tipo_servicio'].value_counts()) > 0:
     estrella_vol = df['tipo_servicio'].value_counts().index[0]
@@ -111,14 +198,18 @@ else:
 
 ventas_sem = df.groupby('semana')['costo_total_mxn'].sum()
 if len(ventas_sem) >= 2 and ventas_sem.iloc[-2] != 0:
-    var_sem = ((ventas_sem.iloc[-1] - ventas_sem.iloc[-2]) / ventas_sem.iloc[-2]) * 100
+    var_sem = (
+        (ventas_sem.iloc[-1] - ventas_sem.iloc[-2]) / ventas_sem.iloc[-2]
+    ) * 100
 else:
     var_sem = 0.0
 
 k1, k2, k3, k4 = st.columns(4)
 k1.metric('Ventas del Periodo', f'${ventas_totales:,.2f} MXN')
 k2.metric('Ticket Promedio', f'${ticket_promedio:,.2f} MXN')
-k3.metric('Servicio Estrella', str(estrella_vol), f'Líder en ingresos: {estrella_rev}')
+k3.metric(
+    'Servicio Estrella', str(estrella_vol), f'Líder en ingresos: {estrella_rev}'
+)
 k4.metric('Variación Semanal', f'{var_sem:.1f}%', delta=f'{var_sem:.1f}%')
 
 st.markdown('---')
@@ -218,10 +309,15 @@ with c5:
         ax.legend()
         st.pyplot(fig)
     else:
-        st.info('Se requieren más registros con fechas continuas para calcular el análisis FFT.')
+        st.info(
+            'Se requieren más registros con fechas continuas para calcular el'
+            ' análisis FFT.'
+        )
 
 with c6:
-    st.subheader('¿Qué líneas de servicio generan mayor volumen de facturación?')
+    st.subheader(
+        '¿Qué líneas de servicio generan mayor volumen de facturación?'
+    )
     fig, ax = plt.subplots(figsize=(8, 4))
     if not df['tipo_servicio'].empty:
         ingresos_cat = (
