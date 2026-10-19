@@ -19,12 +19,10 @@ st.set_page_config(
 # EL DASHBOARD LEE SUS DATOS DIRECTAMENTE DE LA ZONA clean/ EN LA NUBE.
 # ==============================================================================
 
-# Endpoint en la nube de la zona clean/ (Object Storage)
 DEFAULT_CLEAN_CLOUD_URL = (
     'https://raw.githubusercontent.com/luishinojosacorona123-spec/taacos/main/clean/taller_mecanico_clean.csv'
 )
 
-# Endpoint en la nube de la zona raw/ (Object Storage)
 DEFAULT_RAW_CLOUD_URL = (
     'https://raw.githubusercontent.com/luishinojosacorona123-spec/taacos/main/raw/taller_mecanico_raw.csv'
 )
@@ -37,10 +35,8 @@ def etl_clean_pipeline(df_raw: pd.DataFrame) -> pd.DataFrame:
     datos y genera variables temporales.
     """
     df = df_raw.copy()
-    # Eliminar columnas sin nombre o vacías
     df = df.drop(columns=[col for col in df.columns if str(col).strip() == ''])
 
-    # Depuración de fechas y asignación de semana del año
     if 'fecha_servicio' in df.columns:
         df['fecha_servicio'] = pd.to_datetime(
             df['fecha_servicio'], dayfirst=True, errors='coerce'
@@ -53,18 +49,17 @@ def etl_clean_pipeline(df_raw: pd.DataFrame) -> pd.DataFrame:
         df['fecha_servicio'] = pd.to_datetime('today')
         df['semana'] = 1
 
-    # Regla de negocio zona clean/: Excluir servicios cancelados
     if 'estado_servicio' in df.columns:
         df_clean = df[df['estado_servicio'] != 'Cancelado'].copy()
     else:
         df_clean = df.copy()
 
-    # Sanitización de columnas numéricas indispensables
     num_cols = [
         'costo_total_mxn',
         'costo_refacciones_mxn',
         'costo_mano_obra_mxn',
         'duracion_horas',
+        'kilometraje',
     ]
     for col in num_cols:
         if col not in df_clean.columns:
@@ -76,6 +71,9 @@ def etl_clean_pipeline(df_raw: pd.DataFrame) -> pd.DataFrame:
 
     if 'tipo_servicio' not in df_clean.columns:
         df_clean['tipo_servicio'] = 'General'
+
+    if 'marca_vehiculo' not in df_clean.columns:
+        df_clean['marca_vehiculo'] = 'Desconocida'
 
     return df_clean
 
@@ -128,15 +126,13 @@ st.caption(
     ' Procesamiento ETL ➔ Consumo `clean/`'
 )
 
-# Sección opcional de ingesta en la pantalla principal
 with st.expander(
     '📂 Ingesta de datos a la zona `raw/` (Cargar archivo CSV)', expanded=False
 ):
     st.write(
         'Carga cualquier archivo CSV en bruto. El sistema lo recibirá en la zona'
-        ' **raw/**, ejecutará la depuración automática (remoción de'
-        ' cancelados, formato de fechas, validación de tipos) y lo presentará'
-        ' en la zona **clean/**.'
+        ' **raw/**, ejecutará la depuración automática y lo presentará en la'
+        ' zona **clean/**.'
     )
     uploaded_main_file = st.file_uploader(
         'Selecciona el archivo para ingesta raw/:',
@@ -144,17 +140,14 @@ with st.expander(
         key='main_raw_uploader',
     )
 
-# Determinar fuente activa: Ingesta reciente a raw/ o lectura directa de clean/ en la nube
 active_upload = uploaded_main_file or uploaded_raw_file
 
 if active_upload is not None:
-    # 1. Ingesta a zona raw/
     st.info(
         f'📥 **Zona `raw/`:** Archivo `{active_upload.name}` ingresado tal como'
         ' llegó.'
     )
     df_raw = pd.read_csv(active_upload)
-    # 2. Pipeline a zona clean/
     df = etl_clean_pipeline(df_raw)
     st.success(
         f'✨ **Zona `clean/`:** Depuración completada. '
@@ -162,7 +155,6 @@ if active_upload is not None:
         ' clean/.'
     )
 else:
-    # Lectura directa desde el almacenamiento de objetos en la nube (zona clean/)
     try:
         with st.spinner(
             'Conectando al almacenamiento de objetos en la nube (zona'
@@ -182,150 +174,217 @@ else:
 
 # ----------------- KPI HEADER -----------------
 ventas_totales = df['costo_total_mxn'].sum()
-servicios_facturados = df[df['costo_total_mxn'] > 0]
-ticket_promedio = (
-    servicios_facturados['costo_total_mxn'].mean()
-    if len(servicios_facturados) > 0
+marca_top = (
+    df['marca_vehiculo'].value_counts().index[0]
+    if 'marca_vehiculo' in df.columns and not df['marca_vehiculo'].empty
+    else 'N/A'
+)
+marca_top_cant = (
+    df['marca_vehiculo'].value_counts().iloc[0]
+    if 'marca_vehiculo' in df.columns and not df['marca_vehiculo'].empty
+    else 0
+)
+
+servicio_top = (
+    df['tipo_servicio'].value_counts().index[0]
+    if 'tipo_servicio' in df.columns and not df['tipo_servicio'].empty
+    else 'N/A'
+)
+servicio_top_cant = (
+    df['tipo_servicio'].value_counts().iloc[0]
+    if 'tipo_servicio' in df.columns and not df['tipo_servicio'].empty
+    else 0
+)
+
+km_promedio = (
+    df['kilometraje'].mean()
+    if 'kilometraje' in df.columns and len(df['kilometraje']) > 0
     else 0.0
 )
 
-if not df['tipo_servicio'].empty and len(df['tipo_servicio'].value_counts()) > 0:
-    estrella_vol = df['tipo_servicio'].value_counts().index[0]
-    estrella_rev = df.groupby('tipo_servicio')['costo_total_mxn'].sum().idxmax()
-else:
-    estrella_vol = 'N/A'
-    estrella_rev = 'N/A'
-
-ventas_sem = df.groupby('semana')['costo_total_mxn'].sum()
-if len(ventas_sem) >= 2 and ventas_sem.iloc[-2] != 0:
-    var_sem = (
-        (ventas_sem.iloc[-1] - ventas_sem.iloc[-2]) / ventas_sem.iloc[-2]
-    ) * 100
-else:
-    var_sem = 0.0
-
 k1, k2, k3, k4 = st.columns(4)
-k1.metric('Ventas del Periodo', f'${ventas_totales:,.2f} MXN')
-k2.metric('Ticket Promedio', f'${ticket_promedio:,.2f} MXN')
-k3.metric(
-    'Servicio Estrella', str(estrella_vol), f'Líder en ingresos: {estrella_rev}'
+k1.metric('Ventas Totales del Periodo', f'${ventas_totales:,.2f} MXN')
+k2.metric(
+    'Marca Más Atendida',
+    str(marca_top),
+    f'{marca_top_cant:,} servicios realizados',
 )
-k4.metric('Variación Semanal', f'{var_sem:.1f}%', delta=f'{var_sem:.1f}%')
+k3.metric(
+    'Servicio Más Solicitado',
+    str(servicio_top),
+    f'{servicio_top_cant:,} solicitudes',
+)
+k4.metric('Kilometraje Promedio', f'{km_promedio:,.0f} km')
 
 st.markdown('---')
 
-# ----------------- VISUALIZACIONES -----------------
+# ----------------- VISUALIZACIONES EN FORMATO RETICULAR (6 PREGUNTAS) -----------------
 c1, c2 = st.columns(2)
 
+# Gráfica 1: ¿Qué marca de auto es el que ha ocupado más servicio?
 with c1:
-    st.subheader('¿Cómo evoluciona la facturación semana a semana?')
+    st.subheader('¿Qué marca de auto es la que ha ocupado más servicio?')
     fig, ax = plt.subplots(figsize=(8, 4))
-    if len(ventas_sem) > 0:
-        ventas_sem.plot(kind='line', marker='o', ax=ax, color='#1f77b4')
-    ax.set_ylabel('MXN')
-    ax.set_xlabel('Semana del Año')
-    ax.grid(True, linestyle='--', alpha=0.5)
+    if 'marca_vehiculo' in df.columns and not df['marca_vehiculo'].empty:
+        marcas_count = df['marca_vehiculo'].value_counts()
+        marcas_count.plot(kind='bar', ax=ax, color='#1f77b4')
+        ax.set_ylabel('Cantidad de Servicios')
+        ax.set_xlabel('Marca de Vehículo')
+        ax.grid(True, linestyle='--', alpha=0.5)
+        plt.xticks(rotation=45, ha='right')
+        for p in ax.patches:
+            height = p.get_height()
+            if height > 0:
+                ax.annotate(
+                    f'{int(height)}',
+                    (p.get_x() + p.get_width() / 2.0, height),
+                    ha='center',
+                    va='bottom',
+                    fontsize=8,
+                    xytext=(0, 2),
+                    textcoords='offset points',
+                )
     st.pyplot(fig)
 
+# Gráfica 2: ¿Cuáles han sido las ganancias promedio de un día, 15 días, 30 días, 1 año?
 with c2:
-    st.subheader('¿Cuál es la concentración de importes por ticket?')
+    st.subheader(
+        '¿Cuáles han sido las ganancias promedio de 1 día, 15 días, 30 días y 1'
+        ' año?'
+    )
     fig, ax = plt.subplots(figsize=(8, 4))
-    if len(df['costo_total_mxn']) > 0:
-        sns.histplot(
-            df['costo_total_mxn'], bins=30, kde=True, ax=ax, color='#2ca02c'
+    valid_dates = df.dropna(subset=['fecha_servicio'])
+    if len(valid_dates) > 0:
+        daily_earnings = valid_dates.groupby('fecha_servicio')[
+            'costo_total_mxn'
+        ].sum()
+        avg_day = daily_earnings.mean()
+    else:
+        avg_day = df['costo_total_mxn'].mean() if len(df) > 0 else 0.0
+
+    periodos = ['1 Día', '15 Días', '30 Días', '1 Año']
+    valores = [avg_day, avg_day * 15, avg_day * 30, avg_day * 365]
+    colores = ['#2ca02c', '#1f77b4', '#ff7f0e', '#9467bd']
+
+    bars = ax.bar(periodos, valores, color=colores)
+    ax.set_ylabel('Ganancia Promedio (MXN)')
+    ax.set_xlabel('Periodo de Tiempo')
+    ax.grid(True, linestyle='--', alpha=0.5)
+    for bar in bars:
+        yval = bar.get_height()
+        ax.annotate(
+            f'${yval:,.0f}',
+            (bar.get_x() + bar.get_width() / 2.0, yval),
+            ha='center',
+            va='bottom',
+            fontsize=8,
+            xytext=(0, 3),
+            textcoords='offset points',
         )
-        ax.axvline(
-            ticket_promedio,
-            color='red',
-            linestyle='--',
-            label=f'Promedio: ${ticket_promedio:,.0f}',
-        )
-        ax.legend()
-    ax.set_xlabel('Costo Total (MXN)')
     st.pyplot(fig)
 
 c3, c4 = st.columns(2)
 
+# Gráfica 3: Mayor a menor servicio solicitado
 with c3:
-    st.subheader('¿Qué variables explican el costo de las reparaciones?')
-    fig, ax = plt.subplots(figsize=(8, 4))
-    corr_cols = [
-        'costo_refacciones_mxn',
-        'costo_mano_obra_mxn',
-        'costo_total_mxn',
-        'duracion_horas',
-    ]
-    sns.heatmap(
-        df[corr_cols].corr(), annot=True, cmap='Blues', fmt='.2f', ax=ax
+    st.subheader(
+        '¿Cuáles son los servicios más solicitados? (De mayor a menor)'
     )
+    fig, ax = plt.subplots(figsize=(8, 4))
+    if 'tipo_servicio' in df.columns and not df['tipo_servicio'].empty:
+        servicios_ordenados = df['tipo_servicio'].value_counts(ascending=True)
+        servicios_ordenados.plot(kind='barh', ax=ax, color='#ff7f0e')
+        ax.set_xlabel('Cantidad de Servicios Solicitados')
+        ax.set_ylabel('')
+        ax.grid(True, linestyle='--', alpha=0.5)
+        for p in ax.patches:
+            width = p.get_width()
+            if width > 0:
+                ax.annotate(
+                    f'{int(width)}',
+                    (width, p.get_y() + p.get_height() / 2.0),
+                    ha='left',
+                    va='center',
+                    fontsize=8,
+                    xytext=(3, 0),
+                    textcoords='offset points',
+                )
     st.pyplot(fig)
 
+# Gráfica 4: Comparación del costo de refacciones al costo total
 with c4:
-    st.subheader('¿La mano de obra cobrada es lineal respecto al tiempo?')
+    st.subheader(
+        '¿Cómo se compara el costo de refacciones respecto al costo total?'
+    )
     fig, ax = plt.subplots(figsize=(8, 4))
     sns.scatterplot(
         data=df,
-        x='duracion_horas',
-        y='costo_mano_obra_mxn',
-        hue='tipo_servicio',
-        legend=False,
+        x='costo_refacciones_mxn',
+        y='costo_total_mxn',
+        alpha=0.6,
+        color='#2ca02c',
         ax=ax,
     )
-    ax.set_xlabel('Duración (Horas)')
-    ax.set_ylabel('Mano de Obra (MXN)')
+    max_ref = (
+        df['costo_refacciones_mxn'].max()
+        if len(df['costo_refacciones_mxn']) > 0
+        else 0
+    )
+    ax.plot(
+        [0, max_ref],
+        [0, max_ref],
+        color='red',
+        linestyle='--',
+        label='Costo Refacciones Base (sin MO)',
+    )
+    ax.set_xlabel('Costo de Refacciones (MXN)')
+    ax.set_ylabel('Costo Total con Mano de Obra (MXN)')
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.legend()
     st.pyplot(fig)
 
 c5, c6 = st.columns(2)
 
+# Gráfica 5: Duración de los servicios
 with c5:
-    st.subheader(
-        '¿Qué periodicidad domina los ingresos? (Análisis Espectral FFT)'
-    )
-    valid_dates = df.dropna(subset=['fecha_servicio'])
-    if len(valid_dates) > 5 and valid_dates['fecha_servicio'].nunique() > 2:
-        daily_series = (
-            df.groupby('fecha_servicio')['costo_total_mxn']
-            .sum()
-            .reindex(
-                pd.date_range(
-                    df['fecha_servicio'].min(), df['fecha_servicio'].max()
-                ),
-                fill_value=0,
-            )
+    st.subheader('¿Cuál es la duración de los servicios mecánicos?')
+    fig, ax = plt.subplots(figsize=(8, 4))
+    if 'duracion_horas' in df.columns and len(df['duracion_horas']) > 0:
+        duracion_prom = df['duracion_horas'].mean()
+        sns.histplot(
+            df['duracion_horas'], bins=25, kde=True, ax=ax, color='#9467bd'
         )
-        N = len(daily_series)
-        yf = rfft(daily_series.values - daily_series.values.mean())
-        xf = rfftfreq(N, 1.0)
-        periods = 1 / xf[1:]
-        amplitudes = np.abs(yf[1:])
-
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(periods, amplitudes, color='#9467bd', lw=1.5)
-        ax.set_xlim(1, 35)
-        ax.set_xlabel('Ciclo (Días)')
-        ax.set_ylabel('Amplitud')
-        ax.axvline(7, color='orange', linestyle=':', label='Ciclo Semanal (7d)')
-        ax.axvline(15, color='green', linestyle=':', label='Ciclo Quincenal (~15d)')
+        ax.axvline(
+            duracion_prom,
+            color='red',
+            linestyle='--',
+            label=f'Promedio: {duracion_prom:.1f} hrs',
+        )
         ax.legend()
-        st.pyplot(fig)
-    else:
-        st.info(
-            'Se requieren más registros con fechas continuas para calcular el'
-            ' análisis FFT.'
-        )
+    ax.set_xlabel('Duración del Servicio (Horas)')
+    ax.set_ylabel('Cantidad de Servicios')
+    ax.grid(True, linestyle='--', alpha=0.5)
+    st.pyplot(fig)
 
+# Gráfica 6: Kilometrajes
 with c6:
     st.subheader(
-        '¿Qué líneas de servicio generan mayor volumen de facturación?'
+        '¿Cuál es la distribución de kilometrajes en los vehículos atendidos?'
     )
     fig, ax = plt.subplots(figsize=(8, 4))
-    if not df['tipo_servicio'].empty:
-        ingresos_cat = (
-            df.groupby('tipo_servicio')['costo_total_mxn']
-            .sum()
-            .sort_values(ascending=True)
+    if 'kilometraje' in df.columns and len(df['kilometraje']) > 0:
+        km_media = df['kilometraje'].mean()
+        sns.histplot(
+            df['kilometraje'], bins=30, kde=True, ax=ax, color='#d62728'
         )
-        ingresos_cat.plot(kind='barh', ax=ax, color='#d62728')
-    ax.set_xlabel('Total Facturado (MXN)')
-    ax.set_ylabel('')
+        ax.axvline(
+            km_media,
+            color='blue',
+            linestyle='--',
+            label=f'Promedio: {km_media:,.0f} km',
+        )
+        ax.legend()
+    ax.set_xlabel('Kilometraje del Vehículo (km)')
+    ax.set_ylabel('Cantidad de Vehículos')
+    ax.grid(True, linestyle='--', alpha=0.5)
     st.pyplot(fig)
