@@ -355,21 +355,21 @@ with c2:
     fig, ax = plt.subplots(figsize=(8, 4))
     if len(df_filtered['costo_total_mxn']) > 0:
         sns.histplot(
-            y=df_filtered['costo_total_mxn'],
+            x=df_filtered['costo_total_mxn'],
             bins=30,
             kde=True,
             ax=ax,
             color='#2ca02c',
         )
-        ax.axhline(
+        ax.axvline(
             ticket_promedio,
             color='red',
             linestyle='--',
             label=f'Promedio: ${ticket_promedio:,.0f}',
         )
         ax.legend()
-    ax.set_ylabel('Costo Total (MXN)')
-    ax.set_xlabel('Cantidad de Servicios (Frecuencia)')
+    ax.set_xlabel('Costo Total (MXN)')
+    ax.set_ylabel('Cantidad de Servicios (Frecuencia)')
     ax.grid(True, linestyle='--', alpha=0.5)
     st.pyplot(fig)
 
