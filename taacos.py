@@ -268,7 +268,21 @@ else:
 # ÁREA PRINCIPAL: KPIs Y GRÁFICOS INTERACTIVOS (FRONTEND)
 # ==============================================================================
 
-st.title('Métricas Clave del Taller Mecánico GDL')
+# Determinar el período global del dataset (formato: Año(Mes)-Año(Mes))
+MESES_ES = {
+    1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
+    5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
+    9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
+}
+fechas_dataset = df_base['fecha_servicio'].dropna()
+if not fechas_dataset.empty:
+    min_f = fechas_dataset.min()
+    max_f = fechas_dataset.max()
+    periodo_dataset = f"{min_f.year}({MESES_ES.get(min_f.month, '')})-{max_f.year}({MESES_ES.get(max_f.month, '')})"
+else:
+    periodo_dataset = "2024(enero)-2024(diciembre)"
+
+st.title(f'Métricas Clave del Taller Mecánico GDL {periodo_dataset}')
 st.caption(
     'Cloud Data Lakehouse: Ingesta `raw/` ➔ Backend ETL `@st.cache_data` ➔'
     f' Visualización Dinámica ({len(df_filtered):,} de {len(df_base):,} registros'
