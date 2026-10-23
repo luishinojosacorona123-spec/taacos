@@ -374,26 +374,45 @@ with c1:
     st.pyplot(fig)
 
 with c2:
-    st.subheader('¿Cómo se distribuyen los costos por servicio y cuál es su promedio?')
+    st.subheader('¿Cómo se relacionan el costo, la duración y el volumen de cada servicio?')
     fig, ax = plt.subplots(figsize=(8, 4))
-    if len(df_filtered['costo_total_mxn']) > 0:
-        sns.histplot(
-            x=df_filtered['costo_total_mxn'],
-            bins=30,
-            kde=True,
-            ax=ax,
-            color='#2ca02c',
+    if not df_filtered.empty and 'tipo_servicio' in df_filtered.columns:
+        summary_bubble = (
+            df_filtered.groupby('tipo_servicio')
+            .agg(
+                costo=('costo_total_mxn', 'mean'),
+                duracion=('duracion_horas', 'mean'),
+                cantidad=('id_servicio', 'count'),
+            )
+            .reset_index()
         )
-        ax.axvline(
-            ticket_promedio,
-            color='red',
-            linestyle='--',
-            label=f'Promedio: ${ticket_promedio:,.0f}',
+        scatter = ax.scatter(
+            summary_bubble['duracion'],
+            summary_bubble['costo'],
+            s=summary_bubble['cantidad'] * 5,
+            c=summary_bubble['costo'],
+            cmap='viridis',
+            alpha=0.7,
+            edgecolors='black',
+            linewidth=1.2,
         )
-        ax.legend()
-    ax.set_xlabel('Cantidad de Servicios (Frecuencia)')
-    ax.set_ylabel('Costo Total (MXN)')
-    ax.grid(True, linestyle='--', alpha=0.5)
+        for _, row in summary_bubble.iterrows():
+            nombre = row['tipo_servicio']
+            if len(nombre) > 16:
+                nombre = nombre[:14] + '..'
+            ax.annotate(
+                f"{nombre} ({row['cantidad']})",
+                (row['duracion'], row['costo']),
+                fontsize=7.5,
+                ha='left',
+                va='bottom',
+                xytext=(4, 4),
+                textcoords='offset points',
+            )
+        ax.set_xlabel('Duración Promedio (Horas)')
+        ax.set_ylabel('Costo Promedio (MXN)')
+        ax.grid(True, linestyle='--', alpha=0.5)
+        plt.colorbar(scatter, ax=ax, label='Costo Promedio (MXN)')
     st.pyplot(fig)
 
 c3, c4 = st.columns(2)
