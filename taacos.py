@@ -458,9 +458,7 @@ with c4:
 c5, c6 = st.columns(2)
 
 with c5:
-    st.subheader(
-        '¿Qué periodicidad domina los ingresos? (Análisis Espectral FFT)'
-    )
+    st.subheader('¿Cada cuántos días se repiten los picos de mayor facturación?')
     valid_dates = df_filtered.dropna(subset=['fecha_servicio'])
     if len(valid_dates) > 5 and valid_dates['fecha_servicio'].nunique() > 2:
         daily_series = (
@@ -487,6 +485,8 @@ with c5:
         ax.set_ylabel('Amplitud')
         ax.axvline(7, color='orange', linestyle=':', label='Ciclo Semanal (7d)')
         ax.axvline(15, color='green', linestyle=':', label='Ciclo Quincenal (~15d)')
+        ax.axvline(30, color='red', linestyle=':', label='Ciclo Mensual (~30d)')
+        ax.grid(True, linestyle='--', alpha=0.5)
         ax.legend()
         st.pyplot(fig)
     else:
