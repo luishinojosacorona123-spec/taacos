@@ -319,13 +319,21 @@ else:
     estrella_vol = 'N/A'
     estrella_rev = 'N/A'
 
-ventas_sem = df_filtered.groupby('semana')['costo_total_mxn'].sum()
-if len(ventas_sem) >= 2 and ventas_sem.iloc[-2] != 0:
-    var_sem = (
-        (ventas_sem.iloc[-1] - ventas_sem.iloc[-2]) / ventas_sem.iloc[-2]
-    ) * 100
+# Cálculo de variación mensual
+MESES_ABREV = {
+    1: 'Ene', 2: 'Feb', 3: 'Mar', 4: 'Abr',
+    5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Ago',
+    9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dic'
+}
+if not df_filtered.empty and df_filtered['fecha_servicio'].notna().any():
+    df_temp_kpi = df_filtered.dropna(subset=['fecha_servicio'])
+    ventas_mes_kpi = df_temp_kpi.groupby(df_temp_kpi['fecha_servicio'].dt.to_period('M'))['costo_total_mxn'].sum()
+    if len(ventas_mes_kpi) >= 2 and ventas_mes_kpi.iloc[-2] != 0:
+        var_mes = ((ventas_mes_kpi.iloc[-1] - ventas_mes_kpi.iloc[-2]) / ventas_mes_kpi.iloc[-2]) * 100
+    else:
+        var_mes = 0.0
 else:
-    var_sem = 0.0
+    var_mes = 0.0
 
 k1, k2, k3, k4 = st.columns(4)
 k1.metric('Ventas del Periodo', f'${ventas_totales:,.2f} MXN')
@@ -333,7 +341,7 @@ k2.metric('Ticket Promedio', f'${ticket_promedio:,.2f} MXN')
 k3.metric(
     'Servicio Estrella', str(estrella_vol), f'Líder en ingresos: {estrella_rev}'
 )
-k4.metric('Variación Semanal', f'{var_sem:.1f}%', delta=f'{var_sem:.1f}%')
+k4.metric('Variación Mensual', f'{var_mes:.1f}%', delta=f'{var_mes:.1f}%')
 
 st.markdown('---')
 
@@ -341,13 +349,24 @@ st.markdown('---')
 c1, c2 = st.columns(2)
 
 with c1:
-    st.subheader('¿Cómo evoluciona la facturación semana a semana?')
+    st.subheader('¿Cómo evoluciona la facturación mes a mes?')
     fig, ax = plt.subplots(figsize=(8, 4))
-    if len(ventas_sem) > 0:
-        ventas_sem.plot(kind='line', marker='o', ax=ax, color='#1f77b4')
-    ax.set_ylabel('MXN')
-    ax.set_xlabel('Semana del Año')
-    ax.grid(True, linestyle='--', alpha=0.5)
+    if not df_filtered.empty and df_filtered['fecha_servicio'].notna().any():
+        df_temp = df_filtered.dropna(subset=['fecha_servicio'])
+        periodos_mes = df_temp['fecha_servicio'].dt.to_period('M')
+        ventas_mes = df_temp.groupby(periodos_mes)['costo_total_mxn'].sum()
+
+        multi_year = df_temp['fecha_servicio'].dt.year.nunique() > 1
+        nombres_eje = [
+            f"{MESES_ABREV[p.month]} {p.year}" if multi_year else MESES_ABREV[p.month]
+            for p in ventas_mes.index
+        ]
+
+        ax.plot(nombres_eje, ventas_mes.values, marker='o', color='#1f77b4', linewidth=2)
+        ax.set_ylabel('MXN')
+        ax.set_xlabel('Mes')
+        ax.grid(True, linestyle='--', alpha=0.5)
+        plt.xticks(rotation=45 if len(nombres_eje) > 8 else 0)
     st.pyplot(fig)
 
 with c2:
