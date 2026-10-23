@@ -388,13 +388,21 @@ COLOR_MAP_SERVICIO = {
     for i, servicio in enumerate(servicios_unicos)
 }
 
+# Paleta unificada para métodos de pago
+PALETA_METODOS_PAGO = {
+    'Transferencia SPEI': '#2b6cb0',  # Azul corporativo
+    'Tarjeta de crédito': '#319795',  # Verde azulado / Teal
+    'Tarjeta de débito': '#4299e1',   # Azul claro
+    'Efectivo': '#ed8936',            # Naranja cálido
+}
+
 # ==============================================================================
 # 5. JERARQUÍA VISUAL CON st.tabs Y st.columns CON TEXTOS DE APOYO (INSIGHTS)
 # ==============================================================================
-tab_precios, tab_servicios, tab_ciclos = st.tabs([
+tab_precios, tab_servicios, tab_pagos = st.tabs([
     '📈 Precios y Tendencias',
     '🔧 Análisis Operativo y Costos',
-    '🔄 Periodicidad y Demanda (FFT)',
+    '💳 Métodos de Pago y Cobranza',
 ])
 
 # ------------------------------------------------------------------------------
@@ -619,163 +627,119 @@ with tab_servicios:
         )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: PERIODICIDAD Y DEMANDA (ANÁLISIS ESPECTRAL DE FOURIER)
+# PESTAÑA 3: MÉTODOS DE PAGO Y COBRANZA (GRÁFICA DE DONA)
 # ------------------------------------------------------------------------------
-with tab_ciclos:
-    st.subheader(
-        '¿Existen patrones periódicos o estacionalidades ocultas en la demanda diaria? (Análisis de Fourier)'
-    )
-    valid_dates = df_filtered.dropna(subset=['fecha_servicio'])
-    if len(valid_dates) > 5 and valid_dates['fecha_servicio'].nunique() > 2:
-        daily_series = (
-            df_filtered.groupby('fecha_servicio')['costo_total_mxn']
-            .sum()
-            .reindex(
-                pd.date_range(
-                    df_filtered['fecha_servicio'].min(),
-                    df_filtered['fecha_servicio'].max(),
-                ),
-                fill_value=0,
+with tab_pagos:
+    st.subheader('¿Cómo se distribuyen los ingresos según el método de pago de los clientes?')
+    if (
+        not df_filtered.empty
+        and 'metodo_pago' in df_filtered.columns
+        and 'costo_total_mxn' in df_filtered.columns
+    ):
+        pagos_summary = (
+            df_filtered.groupby('metodo_pago')
+            .agg(
+                total_mxn=('costo_total_mxn', 'sum'),
+                cantidad=('id_servicio', 'count'),
             )
+            .sort_values('total_mxn', ascending=False)
         )
-        N = len(daily_series)
-        yf = rfft(daily_series.values - daily_series.values.mean())
-        xf = rfftfreq(N, 1.0)
-        periods = 1 / xf[1:]
-        amplitudes = np.abs(yf[1:])
+        total_global = pagos_summary['total_mxn'].sum()
 
-        # Ordenar periodos ascendentes para trazo limpio
-        sort_idx = np.argsort(periods)
-        periods_sorted = periods[sort_idx]
-        amplitudes_sorted = amplitudes[sort_idx]
+        if total_global > 0:
+            etiquetas = pagos_summary.index.tolist()
+            valores = pagos_summary['total_mxn'].tolist()
+            colores = [PALETA_METODOS_PAGO.get(m, '#718096') for m in etiquetas]
 
-        fig, ax = plt.subplots(figsize=(11, 4.5))
-        ax.plot(
-            periods_sorted,
-            amplitudes_sorted,
-            color='#805ad5',
-            lw=2.2,
-            label='Espectro de Frecuencias (FFT)',
-        )
+            # Gráfica de Dona (Donut Chart)
+            fig, ax = plt.subplots(figsize=(8.5, 4.8))
+            wedges, texts, autotexts = ax.pie(
+                valores,
+                labels=None,
+                autopct='%1.1f%%',
+                pctdistance=0.75,
+                startangle=140,
+                colors=colores,
+                wedgeprops=dict(width=0.42, edgecolor='white', linewidth=2),
+                textprops=dict(fontsize=9.5, fontweight='bold', color='white'),
+            )
 
-        # Detección y alineación exacta sobre los picos reales del dataset (7d, 14d, 28d)
-        peak_7_idx = np.argmin(np.abs(periods - 7.0))
-        peak_14_idx = np.argmin(np.abs(periods - 14.0))
-        peak_28_idx = np.argmin(np.abs(periods - 28.0))
+            # Texto en el centro del hueco de la dona
+            ax.text(
+                0,
+                0.08,
+                'Total Facturado',
+                ha='center',
+                va='center',
+                fontsize=9.5,
+                color='#718096',
+            )
+            ax.text(
+                0,
+                -0.08,
+                f'${total_global:,.0f}\nMXN',
+                ha='center',
+                va='center',
+                fontsize=11,
+                fontweight='bold',
+                color='#1a202c',
+            )
 
-        # Líneas de referencia que coinciden con los vértices de los picos
-        ax.axvline(
-            7,
-            color='#ff7f0e',
-            linestyle='--',
-            linewidth=1.8,
-            label='Ciclo Semanal (7 días)',
-        )
-        ax.axvline(
-            14,
-            color='#2ca02c',
-            linestyle='--',
-            linewidth=1.8,
-            label='Ciclo Bisemanal / Quincenal (14 días)',
-        )
-        ax.axvline(
-            28,
-            color='#d62728',
-            linestyle='--',
-            linewidth=1.8,
-            label='Ciclo Mensual / 4 Semanas (28 días)',
-        )
+            # Leyenda descriptiva a la derecha con montos en MXN y porcentaje
+            legend_labels = [
+                f"{etiqueta}: ${val:,.0f} ({val/total_global*100:.1f}%)"
+                for etiqueta, val in zip(etiquetas, valores)
+            ]
+            ax.legend(
+                wedges,
+                legend_labels,
+                title='Método de Pago',
+                loc='center left',
+                bbox_to_anchor=(1.02, 0.5),
+                fontsize=8.5,
+                title_fontsize=9.5,
+            )
+            ax.axis('equal')
+            plt.tight_layout()
+            st.pyplot(fig)
 
-        # Marcadores visuales destacados en las crestas de los 3 picos
-        ax.scatter(
-            [7, 14, 28],
-            [
-                amplitudes[peak_7_idx],
-                amplitudes[peak_14_idx],
-                amplitudes[peak_28_idx],
-            ],
-            color=['#ff7f0e', '#2ca02c', '#d62728'],
-            s=80,
-            zorder=5,
-            edgecolor='black',
-            linewidth=1,
-        )
+            # Tarjetas de diagnóstico cuantitativo / métricas de cobranza
+            cols = st.columns(len(etiquetas))
+            for col, (metodo, row) in zip(cols, pagos_summary.iterrows()):
+                pct = (row['total_mxn'] / total_global) * 100
+                col.metric(
+                    label=metodo,
+                    value=f"${row['total_mxn']:,.0f} MXN",
+                    delta=f"{pct:.1f}% ({int(row['cantidad'])} servicios)",
+                )
 
-        # Anotaciones numéricas y textuales en cada pico
-        mask_visible = (periods_sorted >= 2) & (periods_sorted <= 35)
-        max_amp = (
-            amplitudes_sorted[mask_visible].max()
-            if mask_visible.any()
-            else amplitudes.max()
-        )
-        ax.set_ylim(-30000, max_amp * 1.18)
+            # Cálculo de bancarización / digitalización
+            digital_total = pagos_summary.loc[
+                pagos_summary.index.isin([
+                    'Transferencia SPEI',
+                    'Tarjeta de crédito',
+                    'Tarjeta de débito',
+                ]),
+                'total_mxn',
+            ].sum()
+            digital_pct = (
+                (digital_total / total_global) * 100 if total_global > 0 else 0
+            )
 
-        ax.annotate(
-            'Pico Semanal\n(7 días)',
-            (7, amplitudes[peak_7_idx]),
-            xytext=(7, amplitudes[peak_7_idx] + max_amp * 0.04),
-            ha='center',
-            fontsize=8.5,
-            fontweight='bold',
-            color='#c05621',
-        )
-        ax.annotate(
-            'Pico Quincenal\n(14 días)',
-            (14, amplitudes[peak_14_idx]),
-            xytext=(14, amplitudes[peak_14_idx] + max_amp * 0.04),
-            ha='center',
-            fontsize=8.5,
-            fontweight='bold',
-            color='#22543d',
-        )
-        ax.annotate(
-            'Pico Mensual\n(28 días)',
-            (28, amplitudes[peak_28_idx]),
-            xytext=(28, amplitudes[peak_28_idx] + max_amp * 0.04),
-            ha='center',
-            fontsize=8.5,
-            fontweight='bold',
-            color='#9b2c2c',
-        )
-
-        ax.set_xlim(2, 35)
-        ax.set_xlabel('Periodo del Ciclo (Días)', fontsize=10)
-        ax.set_ylabel('Amplitud Espectral', fontsize=10)
-        ax.yaxis.set_major_formatter('{x:,.0f}')
-        ax.grid(True, linestyle='--', alpha=0.5)
-        ax.legend(loc='upper right', fontsize=8.5)
-        st.pyplot(fig)
-
-        # Tarjetas de diagnóstico cuantitativo del análisis espectral
-        m1, m2, m3 = st.columns(3)
-        m1.metric(
-            'Ciclo Fundamental',
-            '7 Días (Semanal)',
-            'Pico principal de mayor energía',
-        )
-        m2.metric(
-            'Segundo Armónico',
-            '14 Días (Quincenal)',
-            'Efecto nómina / bisemanal',
-        )
-        m3.metric(
-            'Tercer Armónico',
-            '28 Días (Mensual)',
-            'Ciclo de 4 semanas completas',
-        )
-
-        # Diagnóstico analítico y aplicación operativa para el taller
-        st.markdown("""
-        **🔍 Diagnóstico e Interpretación del Análisis Espectral de Fourier:**
-        * **Identificación de periodicidad oculta:** La Transformada Rápida de Fourier (FFT) descompone la serie temporal diaria en ondas sinusoidales elementales, confirmando que la demanda del taller **no es aleatoria**, sino altamente estructurada en tres frecuencias armónicas.
-        * **Frecuencias dominantes identificadas:**
-          1. **Ciclo Semanal (7 días):** Es la frecuencia dominante ($\approx 820,000$ de amplitud). Refleja el flujo regular de trabajo de lunes a sábado, con saturación concentrada los fines de semana.
-          2. **Ciclo Quincenal (14 días):** Segundo armónico más potente ($\approx 429,000$ de amplitud). Se sincroniza de forma directa con los días de cobro de sueldo y liquidación de anticipos de los clientes.
-          3. **Ciclo Mensual (28 días):** Tercer armónico significativo ($\approx 420,000$ de amplitud). Representa la recurrencia periódica de flotillas y revisiones programadas mensuales.
-        * **Aplicación en la Gestión del Taller:** Permite programar de forma preventiva los roles de mecánicos, asignación de bahías y compras de autopartes justo antes de los días 7 y 14 de cada mes para evitar cuellos de botella.
-        """)
+            # Resumen e insights ejecutivos de cobranza
+            st.caption(
+                f"💳 **Insight clave de Cobranza y Facturación:** El **{digital_pct:.1f}%** del total facturado "
+                f"se canaliza a través de métodos bancarizados/digitales (SPEI y Tarjetas de Crédito/Débito), "
+                f"minimizando el riesgo operativo de manejo de efectivo en taller y agilizando la conciliación contable. "
+                f"Las transferencias SPEI lideran la captación sin costos por comisiones de adquirencia para el negocio."
+            )
+        else:
+            st.info(
+                'No hay montos facturados registrados para los filtros'
+                ' seleccionados.'
+            )
     else:
         st.info(
-            'Se requieren más registros con fechas continuas para calcular el'
-            ' análisis FFT en este rango filtrado.'
+            'Se requieren registros válidos con información de método de pago'
+            ' en este rango filtrado.'
         )
