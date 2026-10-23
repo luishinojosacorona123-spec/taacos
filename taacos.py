@@ -376,33 +376,45 @@ with c2:
 c3, c4 = st.columns(2)
 
 with c3:
-    st.subheader('¿Qué variables explican el costo de las reparaciones?')
+    st.subheader('¿Cómo se distribuye el costo total? (Refacciones vs. Mano de Obra)')
     fig, ax = plt.subplots(figsize=(8, 4))
-    corr_cols = [
-        'costo_refacciones_mxn',
-        'costo_mano_obra_mxn',
-        'costo_total_mxn',
-        'duracion_horas',
-    ]
-    # Comprobar que haya suficientes columnas con varianza para correlación
-    valid_corr_cols = [
-        c
-        for c in corr_cols
-        if c in df_filtered.columns and df_filtered[c].std() > 0
-    ]
-    if len(valid_corr_cols) >= 2:
-        sns.heatmap(
-            df_filtered[valid_corr_cols].corr(),
-            annot=True,
-            cmap='Blues',
-            fmt='.2f',
-            ax=ax,
+    costo_ref = df_filtered['costo_refacciones_mxn'].sum()
+    costo_mo = df_filtered['costo_mano_obra_mxn'].sum()
+    total_costos = costo_ref + costo_mo
+
+    if total_costos > 0:
+        etiquetas = ['Refacciones', 'Mano de Obra']
+        valores = [costo_ref, costo_mo]
+        colores = ['#1f77b4', '#ff7f0e']
+        explode = (0.05, 0)
+
+        wedges, texts, autotexts = ax.pie(
+            valores,
+            labels=etiquetas,
+            autopct='%1.1f%%',
+            startangle=90,
+            colors=colores,
+            explode=explode,
+            textprops={'fontsize': 10},
+            wedgeprops={'edgecolor': 'white', 'linewidth': 1.5},
+        )
+        for autotext in autotexts:
+            autotext.set_color('white')
+            autotext.set_weight('bold')
+        ax.axis('equal')
+        ax.legend(
+            labels=[
+                f'{etiquetas[0]}: ${costo_ref:,.2f} MXN',
+                f'{etiquetas[1]}: ${costo_mo:,.2f} MXN',
+            ],
+            loc='upper right',
+            fontsize=8,
         )
     else:
         ax.text(
             0.5,
             0.5,
-            'Datos insuficientes para correlación con los filtros aplicados',
+            'Sin datos de costos para los filtros seleccionados',
             ha='center',
             va='center',
         )
