@@ -391,8 +391,8 @@ with c2:
             label=f'Promedio: ${ticket_promedio:,.0f}',
         )
         ax.legend()
-    ax.set_xlabel('Costo Total (MXN)')
-    ax.set_ylabel('Cantidad de Servicios (Frecuencia)')
+    ax.set_xlabel('Cantidad de Servicios (Frecuencia)')
+    ax.set_ylabel('Costo Total (MXN)')
     ax.grid(True, linestyle='--', alpha=0.5)
     st.pyplot(fig)
 
