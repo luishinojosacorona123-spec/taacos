@@ -316,14 +316,20 @@ if (
     and len(df_filtered['tipo_servicio'].value_counts()) > 0
 ):
     estrella_vol = df_filtered['tipo_servicio'].value_counts().index[0]
-    estrella_rev = (
-        df_filtered.groupby('tipo_servicio')['costo_total_mxn'].sum().idxmax()
-    )
+    servicios_facturados_base = df_filtered[df_filtered['costo_total_mxn'] > 0]
+    if not servicios_facturados_base.empty:
+        estrella_precio = (
+            servicios_facturados_base.groupby('tipo_servicio')['costo_total_mxn']
+            .mean()
+            .idxmax()
+        )
+    else:
+        estrella_precio = 'N/A'
 else:
     estrella_vol = 'N/A'
-    estrella_rev = 'N/A'
+    estrella_precio = 'N/A'
 
-# Cálculo de variación mensual y métrica del último mes cerrado
+# Cálculo de variación mensual y métrica de ticket promedio del último mes cerrado
 MESES_ABREV = {
     1: 'Ene', 2: 'Feb', 3: 'Mar', 4: 'Abr',
     5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Ago',
@@ -331,33 +337,41 @@ MESES_ABREV = {
 }
 if not df_filtered.empty and df_filtered['fecha_servicio'].notna().any():
     df_temp_kpi = df_filtered.dropna(subset=['fecha_servicio'])
-    ventas_mes_kpi = df_temp_kpi.groupby(df_temp_kpi['fecha_servicio'].dt.to_period('M'))['costo_total_mxn'].sum()
-    if len(ventas_mes_kpi) >= 2 and ventas_mes_kpi.iloc[-2] != 0:
-        var_mes = ((ventas_mes_kpi.iloc[-1] - ventas_mes_kpi.iloc[-2]) / ventas_mes_kpi.iloc[-2]) * 100
-        p_ult = ventas_mes_kpi.index[-1]
-        p_penult = ventas_mes_kpi.index[-2]
-        ult_mes_label = f"Ventas {MESES_ABREV.get(p_ult.month, '')} {p_ult.year}"
-        ult_mes_valor = f"${ventas_mes_kpi.iloc[-1]:,.2f} MXN"
-        delta_str = f"{var_mes:+.1f}% vs {MESES_ABREV.get(p_penult.month, '')}"
-    elif len(ventas_mes_kpi) == 1:
-        p_ult = ventas_mes_kpi.index[-1]
-        ult_mes_label = f"Ventas {MESES_ABREV.get(p_ult.month, '')} {p_ult.year}"
-        ult_mes_valor = f"${ventas_mes_kpi.iloc[-1]:,.2f} MXN"
+    df_billed_kpi = df_temp_kpi[df_temp_kpi['costo_total_mxn'] > 0]
+    ticket_mes_kpi = (
+        df_billed_kpi.groupby(df_billed_kpi['fecha_servicio'].dt.to_period('M'))[
+            'costo_total_mxn'
+        ].mean()
+    )
+    if len(ticket_mes_kpi) >= 2 and ticket_mes_kpi.iloc[-2] != 0:
+        var_ticket = (
+            (ticket_mes_kpi.iloc[-1] - ticket_mes_kpi.iloc[-2])
+            / ticket_mes_kpi.iloc[-2]
+        ) * 100
+        p_ult = ticket_mes_kpi.index[-1]
+        p_penult = ticket_mes_kpi.index[-2]
+        ult_mes_label = f"Ticket Promedio {MESES_ABREV.get(p_ult.month, '')} {p_ult.year}"
+        ult_mes_valor = f"${ticket_mes_kpi.iloc[-1]:,.2f} MXN"
+        delta_str = f"{var_ticket:+.1f}% vs {MESES_ABREV.get(p_penult.month, '')}"
+    elif len(ticket_mes_kpi) == 1:
+        p_ult = ticket_mes_kpi.index[-1]
+        ult_mes_label = f"Ticket Promedio {MESES_ABREV.get(p_ult.month, '')} {p_ult.year}"
+        ult_mes_valor = f"${ticket_mes_kpi.iloc[-1]:,.2f} MXN"
         delta_str = "Mes único"
     else:
-        ult_mes_label = "Ventas Último Mes"
+        ult_mes_label = "Ticket Promedio Último Mes"
         ult_mes_valor = "$0.00 MXN"
         delta_str = "0.0%"
 else:
-    ult_mes_label = "Ventas Último Mes"
+    ult_mes_label = "Ticket Promedio Último Mes"
     ult_mes_valor = "$0.00 MXN"
     delta_str = "0.0%"
 
 k1, k2, k3, k4 = st.columns(4)
 k1.metric('Ventas del Periodo', f'${ventas_totales:,.2f} MXN')
-k2.metric('Ticket Promedio', f'${ticket_promedio:,.2f} MXN')
+k2.metric('Ticket Promedio Global', f'${ticket_promedio:,.2f} MXN')
 k3.metric(
-    'Servicio Estrella', str(estrella_vol), f'Líder en ingresos: {estrella_rev}'
+    'Servicio Estrella', str(estrella_vol), f'Mayor precio prom: {estrella_precio}'
 )
 k4.metric(ult_mes_label, ult_mes_valor, delta=delta_str)
 
@@ -377,83 +391,99 @@ COLOR_MAP_SERVICIO = {
 # ==============================================================================
 # 5. JERARQUÍA VISUAL CON st.tabs Y st.columns CON TEXTOS DE APOYO (INSIGHTS)
 # ==============================================================================
-tab_ventas, tab_servicios, tab_ciclos = st.tabs([
-    '📈 Facturación y Tendencias',
+tab_precios, tab_servicios, tab_ciclos = st.tabs([
+    '📈 Precios y Tendencias',
     '🔧 Análisis Operativo y Costos',
     '🔄 Periodicidad y Demanda (FFT)',
 ])
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: FACTURACIÓN Y TENDENCIAS (HERO CHART ARRIBA + COLUMNAS SECUNDARIAS)
+# PESTAÑA 1: PRECIOS Y TENDENCIAS (HERO CHART ARRIBA + COLUMNAS SECUNDARIAS)
 # ------------------------------------------------------------------------------
-with tab_ventas:
+with tab_precios:
     # Gráfico Principal de Mayor Jerarquía Visual (Arriba y a ancho completo)
-    st.subheader('¿Cómo evoluciona la facturación mes a mes?')
+    st.subheader('¿Cómo evoluciona el precio promedio por servicio mes a mes?')
     fig, ax = plt.subplots(figsize=(11, 4))
     if not df_filtered.empty and df_filtered['fecha_servicio'].notna().any():
         df_temp = df_filtered.dropna(subset=['fecha_servicio'])
-        periodos_mes = df_temp['fecha_servicio'].dt.to_period('M')
-        ventas_mes = df_temp.groupby(periodos_mes)['costo_total_mxn'].sum()
+        df_billed = df_temp[df_temp['costo_total_mxn'] > 0]
+        periodos_mes = df_billed['fecha_servicio'].dt.to_period('M')
+        ticket_mes = df_billed.groupby(periodos_mes)['costo_total_mxn'].mean()
 
-        multi_year = df_temp['fecha_servicio'].dt.year.nunique() > 1
+        multi_year = df_billed['fecha_servicio'].dt.year.nunique() > 1
         nombres_eje = [
             f"{MESES_ABREV.get(p.month, '')} {p.year}" if multi_year else MESES_ABREV.get(p.month, '')
-            for p in ventas_mes.index
+            for p in ticket_mes.index
         ]
 
         ax.plot(
             nombres_eje,
-            ventas_mes.values,
+            ticket_mes.values,
             marker='o',
             color='#1f77b4',
             linewidth=2.5,
             markersize=7,
         )
-        ax.set_ylabel('Facturación (MXN)')
+        ax.set_ylabel('Precio Promedio (MXN)')
         ax.set_xlabel('Mes')
         ax.yaxis.set_major_formatter('${x:,.0f}')
         ax.grid(True, linestyle='--', alpha=0.5)
         plt.xticks(rotation=45 if len(nombres_eje) > 8 else 0)
     st.pyplot(fig)
     st.caption(
-        '📈 **Insight clave:** La facturación anual muestra un crecimiento notable con picos destacados'
-        ' en Enero y Febrero (~$730k y ~$810k MXN), seguido de un repunte positivo de +34.2% en Junio ($681k MXN)'
-        ' respecto a Mayo, reflejando estacionalidad comercial de inicio y mitad de año.'
+        '📈 **Insight clave:** El precio promedio por servicio (ticket promedio) se mantiene altamente'
+        ' estable a lo largo del año entre ~$4,000 y ~$5,400 MXN, alcanzando su punto máximo en Febrero (~$5,435 MXN)'
+        ' debido a una mayor concentración de servicios de alta complejidad técnica como motor y transmisión.'
     )
 
     st.markdown('---')
 
-    # Fila secundaria en 2 columnas para distribución de ingresos y composición de costos
-    col_ingresos, col_pie = st.columns(2)
+    # Fila secundaria en 2 columnas para precio promedio por servicio y composición de costos
+    col_precios, col_pie = st.columns(2)
 
-    with col_ingresos:
-        st.subheader('¿Qué líneas de servicio generan mayor volumen de facturación?')
+    with col_precios:
+        st.subheader('¿Cuál es el precio promedio por línea de servicio?')
         fig, ax = plt.subplots(figsize=(8, 4.5))
         if not df_filtered['tipo_servicio'].empty:
-            ingresos_cat = (
-                df_filtered.groupby('tipo_servicio')['costo_total_mxn']
-                .sum()
+            df_billed_serv = df_filtered[df_filtered['costo_total_mxn'] > 0]
+            precios_cat = (
+                df_billed_serv.groupby('tipo_servicio')['costo_total_mxn']
+                .mean()
                 .sort_values(ascending=True)
             )
             colores_barras = [
-                COLOR_MAP_SERVICIO.get(s, '#1f77b4') for s in ingresos_cat.index
+                COLOR_MAP_SERVICIO.get(s, '#1f77b4') for s in precios_cat.index
             ]
             ax.barh(
-                ingresos_cat.index,
-                ingresos_cat.values,
+                precios_cat.index,
+                precios_cat.values,
                 color=colores_barras,
                 edgecolor='black',
                 linewidth=0.8,
                 alpha=0.85,
             )
             ax.xaxis.set_major_formatter('${x:,.0f}')
-        ax.set_xlabel('Total Facturado (MXN)')
+            for p in ax.patches:
+                width = p.get_width()
+                if width > 0:
+                    ax.annotate(
+                        f'${width:,.0f}',
+                        (width, p.get_y() + p.get_height() / 2.0),
+                        ha='left',
+                        va='center',
+                        fontsize=8,
+                        xytext=(4, 0),
+                        textcoords='offset points',
+                    )
+        ax.set_xlabel('Precio Promedio (MXN)')
         ax.set_ylabel('')
         ax.grid(True, linestyle='--', alpha=0.5)
         st.pyplot(fig)
         st.caption(
-            '📊 **Insight clave:** Aunque servicios preventivos como afinación o frenos tienen más clientes,'
-            ' *Reparación de motor* y *Transmisión* lideran la facturación acumulada debido a su alto valor unitario por ticket.'
+            '📊 **Insight clave:** *Reparación de motor* lidera por amplio margen el precio promedio'
+            ' (~$20,537 MXN), seguido de *Embrague* (~$8,750 MXN) y *Suspensión* (~$7,354 MXN), mientras'
+            ' que los mantenimientos preventivos frecuentes como *Cambio de aceite y filtro* registran'
+            ' el precio más accesible y competitivo (~$1,683 MXN).'
         )
 
     with col_pie:
