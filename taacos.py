@@ -374,45 +374,30 @@ with c1:
     st.pyplot(fig)
 
 with c2:
-    st.subheader('¿Cómo se relacionan el costo, la duración y el volumen de cada servicio?')
+    st.subheader('¿Cómo se distribuye y varía el costo según el tipo de servicio?')
     fig, ax = plt.subplots(figsize=(8, 4))
-    if not df_filtered.empty and 'tipo_servicio' in df_filtered.columns:
-        summary_bubble = (
-            df_filtered.groupby('tipo_servicio')
-            .agg(
-                costo=('costo_total_mxn', 'mean'),
-                duracion=('duracion_horas', 'mean'),
-                cantidad=('id_servicio', 'count'),
-            )
-            .reset_index()
+    if not df_filtered.empty and 'tipo_servicio' in df_filtered.columns and len(df_filtered) > 0:
+        orden_servicios = (
+            df_filtered.groupby('tipo_servicio')['costo_total_mxn']
+            .median()
+            .sort_values(ascending=False)
+            .index
         )
-        scatter = ax.scatter(
-            summary_bubble['duracion'],
-            summary_bubble['costo'],
-            s=summary_bubble['cantidad'] * 5,
-            c=summary_bubble['costo'],
-            cmap='viridis',
-            alpha=0.7,
-            edgecolors='black',
+        sns.boxplot(
+            data=df_filtered,
+            x='costo_total_mxn',
+            y='tipo_servicio',
+            order=orden_servicios,
+            color='#3182bd',
+            boxprops=dict(alpha=0.75),
+            ax=ax,
+            fliersize=3,
             linewidth=1.2,
         )
-        for _, row in summary_bubble.iterrows():
-            nombre = row['tipo_servicio']
-            if len(nombre) > 16:
-                nombre = nombre[:14] + '..'
-            ax.annotate(
-                f"{nombre} ({row['cantidad']})",
-                (row['duracion'], row['costo']),
-                fontsize=7.5,
-                ha='left',
-                va='bottom',
-                xytext=(4, 4),
-                textcoords='offset points',
-            )
-        ax.set_xlabel('Duración Promedio (Horas)')
-        ax.set_ylabel('Costo Promedio (MXN)')
+        ax.set_xlabel('Costo Total (MXN)')
+        ax.set_ylabel('')
+        ax.xaxis.set_major_formatter('${x:,.0f}')
         ax.grid(True, linestyle='--', alpha=0.5)
-        plt.colorbar(scatter, ax=ax, label='Costo Promedio (MXN)')
     st.pyplot(fig)
 
 c3, c4 = st.columns(2)
