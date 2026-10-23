@@ -32,6 +32,14 @@ DEFAULT_RAW_CLOUD_URL = (
 # 2. CAPA DE BACKEND: CARGA Y LIMPIEZA DE DATOS CON @st.cache_data
 # ==============================================================================
 
+def parse_dates_robust(series: pd.Series) -> pd.Series:
+    """Parsea fechas de forma precisa dando prioridad al formato día/mes/año (DD/MM/YYYY)."""
+    parsed = pd.to_datetime(series, format='%d/%m/%Y', errors='coerce')
+    if parsed.isna().all() or parsed.isna().sum() > len(series) * 0.2:
+        parsed = pd.to_datetime(series, errors='coerce')
+    return parsed
+
+
 @st.cache_data(ttl=600, show_spinner=False)
 def load_and_clean_data(cloud_url: str) -> pd.DataFrame:
     """Capa de Backend:
@@ -47,9 +55,7 @@ def load_and_clean_data(cloud_url: str) -> pd.DataFrame:
 
     # 2. Conversión robusta de fechas y generación de semanas
     if 'fecha_servicio' in df.columns:
-        df['fecha_servicio'] = pd.to_datetime(
-            df['fecha_servicio'], dayfirst=True, errors='coerce'
-        )
+        df['fecha_servicio'] = parse_dates_robust(df['fecha_servicio'])
         if df['fecha_servicio'].notna().any():
             df['semana'] = df['fecha_servicio'].dt.isocalendar().week
         else:
@@ -99,9 +105,7 @@ def etl_clean_pipeline(df_raw: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(columns=[col for col in df.columns if str(col).strip() == ''])
 
     if 'fecha_servicio' in df.columns:
-        df['fecha_servicio'] = pd.to_datetime(
-            df['fecha_servicio'], dayfirst=True, errors='coerce'
-        )
+        df['fecha_servicio'] = parse_dates_robust(df['fecha_servicio'])
         if df['fecha_servicio'].notna().any():
             df['semana'] = df['fecha_servicio'].dt.isocalendar().week
         else:
