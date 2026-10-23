@@ -622,7 +622,7 @@ with tab_servicios:
 # PESTAÑA 3: PERIODICIDAD Y DEMANDA (ANÁLISIS ESPECTRAL DE FOURIER)
 # ------------------------------------------------------------------------------
 with tab_ciclos:
-    st.subheader('¿Cada cuántos días se repiten los picos de mayor facturación? (Análisis FFT)')
+    st.subheader('¿Cuáles son los ciclos periódicos que dominan la demanda del taller? (Análisis FFT)')
     valid_dates = df_filtered.dropna(subset=['fecha_servicio'])
     if len(valid_dates) > 5 and valid_dates['fecha_servicio'].nunique() > 2:
         daily_series = (
