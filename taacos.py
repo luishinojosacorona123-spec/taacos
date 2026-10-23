@@ -351,7 +351,7 @@ with c1:
     st.pyplot(fig)
 
 with c2:
-    st.subheader('¿Cuál es la concentración de importes por ticket?')
+    st.subheader('¿Cómo se distribuyen los costos por servicio y cuál es su promedio?')
     fig, ax = plt.subplots(figsize=(8, 4))
     if len(df_filtered['costo_total_mxn']) > 0:
         sns.histplot(
