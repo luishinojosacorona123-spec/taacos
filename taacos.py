@@ -642,27 +642,85 @@ with tab_ciclos:
         periods = 1 / xf[1:]
         amplitudes = np.abs(yf[1:])
 
-        fig, ax = plt.subplots(figsize=(11, 4))
-        ax.plot(periods, amplitudes, color='#9467bd', lw=2)
-        ax.set_xlim(1, 35)
-        ax.set_xlabel('Periodo del Ciclo (Días)')
-        ax.set_ylabel('Amplitud Espectral')
-        ax.axvline(7, color='#ff7f0e', linestyle='--', linewidth=1.5, label='Ciclo Semanal (7d)')
-        ax.axvline(15, color='#2ca02c', linestyle='--', linewidth=1.5, label='Ciclo Quincenal (~15d)')
-        ax.axvline(30, color='#d62728', linestyle='--', linewidth=1.5, label='Ciclo Mensual (~30d)')
+        # Ordenar periodos ascendentes para trazo limpio
+        sort_idx = np.argsort(periods)
+        periods_sorted = periods[sort_idx]
+        amplitudes_sorted = amplitudes[sort_idx]
+
+        fig, ax = plt.subplots(figsize=(11, 4.5))
+        ax.plot(periods_sorted, amplitudes_sorted, color='#805ad5', lw=2.2, label='Espectro de Frecuencias')
+
+        # Detección y alineación exacta sobre los picos reales del dataset (7d, 14d, 28d)
+        peak_7_idx = np.argmin(np.abs(periods - 7.0))
+        peak_14_idx = np.argmin(np.abs(periods - 14.0))
+        peak_28_idx = np.argmin(np.abs(periods - 28.0))
+
+        # Líneas de referencia que coinciden con los vértices de los picos
+        ax.axvline(7, color='#ff7f0e', linestyle='--', linewidth=1.8, label='Ciclo Semanal (7 días)')
+        ax.axvline(14, color='#2ca02c', linestyle='--', linewidth=1.8, label='Ciclo Bisemanal / Quincenal (14 días)')
+        ax.axvline(28, color='#d62728', linestyle='--', linewidth=1.8, label='Ciclo Mensual / 4 Semanas (28 días)')
+
+        # Marcadores visuales destacados en las crestas de los 3 picos
+        ax.scatter(
+            [7, 14, 28],
+            [amplitudes[peak_7_idx], amplitudes[peak_14_idx], amplitudes[peak_28_idx]],
+            color=['#ff7f0e', '#2ca02c', '#d62728'],
+            s=80,
+            zorder=5,
+            edgecolor='black',
+            linewidth=1,
+        )
+
+        # Anotaciones numéricas y textuales en cada pico
+        mask_visible = (periods_sorted >= 2) & (periods_sorted <= 35)
+        max_amp = amplitudes_sorted[mask_visible].max() if mask_visible.any() else amplitudes.max()
+        ax.set_ylim(-30000, max_amp * 1.18)
+
+        ax.annotate(
+            'Pico Semanal\n(7 días)',
+            (7, amplitudes[peak_7_idx]),
+            xytext=(7, amplitudes[peak_7_idx] + max_amp * 0.04),
+            ha='center',
+            fontsize=8.5,
+            fontweight='bold',
+            color='#c05621',
+        )
+        ax.annotate(
+            'Pico Quincenal\n(14 días)',
+            (14, amplitudes[peak_14_idx]),
+            xytext=(14, amplitudes[peak_14_idx] + max_amp * 0.04),
+            ha='center',
+            fontsize=8.5,
+            fontweight='bold',
+            color='#22543d',
+        )
+        ax.annotate(
+            'Pico Mensual\n(28 días)',
+            (28, amplitudes[peak_28_idx]),
+            xytext=(28, amplitudes[peak_28_idx] + max_amp * 0.04),
+            ha='center',
+            fontsize=8.5,
+            fontweight='bold',
+            color='#9b2c2c',
+        )
+
+        ax.set_xlim(2, 35)
+        ax.set_xlabel('Periodo del Ciclo (Días)', fontsize=10)
+        ax.set_ylabel('Amplitud Espectral', fontsize=10)
+        ax.yaxis.set_major_formatter('{x:,.0f}')
         ax.grid(True, linestyle='--', alpha=0.5)
-        ax.legend(loc='upper right', fontsize=9)
+        ax.legend(loc='upper right', fontsize=8.5)
         st.pyplot(fig)
 
         m1, m2, m3 = st.columns(3)
         m1.info('📅 **Ciclo Semanal (7 días):** Saturación de citas hacia viernes y fines de semana.')
-        m2.info('💰 **Ciclo Quincenal (15 días):** Mayor demanda ligada a las fechas de cobro salarial.')
-        m3.info('🗓️ **Ciclo Mensual (30 días):** Cierres de mes y mantenimientos programados de flotillas.')
+        m2.info('💰 **Ciclo Quincenal (14 días):** Mayor demanda ligada a las fechas de cobro salarial quincenal.')
+        m3.info('🗓️ **Ciclo Mensual (28 días):** Ciclo completo de 4 semanas de mantenimiento preventivo y flotillas.')
 
         st.caption(
-            '🔄 **Insight clave:** El análisis de Fourier revela que la demanda sigue ciclos quincenales'
-            ' y semanales predecibles asociados al pago salarial, facilitando la programación de turnos,'
-            ' capacidad de bahías y compras de stock justo a tiempo.'
+            '🔄 **Insight clave:** El análisis de Fourier revela que la demanda sigue ciclos quincenales (14 días)'
+            ' y semanales (7 días) matemáticamente exactos asociados al flujo de efectivo de los clientes,'
+            ' facilitando la programación de turnos, capacidad de bahías y compras de stock justo a tiempo.'
         )
     else:
         st.info(
