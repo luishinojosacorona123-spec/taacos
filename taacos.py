@@ -375,10 +375,12 @@ with tab_tendencias:
     col_barras, col_pie = st.columns(2)
 
     with col_barras:
-        st.subheader('¿Cuáles son las entidades federativas con mayor número de homicidios registrados?')
+        st.subheader('¿Cuáles son las entidades federativas con mayor número de homicidios consumados?')
         fig, ax = plt.subplots(figsize=(8, 4.6))
         
-        top10_estados = df_filtered.groupby('entidad')['total_delitos'].sum().sort_values(ascending=True).tail(10)
+        # Excluir tentativa para enfocarse con rigor en homicidios consumados (dolosos + culposos)
+        df_barras = df_filtered[~df_filtered['subtipo_delito'].str.contains('tentativa', case=False, na=False)]
+        top10_estados = df_barras.groupby('entidad')['total_delitos'].sum().sort_values(ascending=True).tail(10)
         bars = ax.barh(top10_estados.index, top10_estados.values, color='#e53e3e', height=0.65, edgecolor='black', linewidth=0.5)
         
         max_val = max(top10_estados.values) if len(top10_estados) > 0 else 1
@@ -394,14 +396,15 @@ with tab_tendencias:
                 color='#742a2a',
             )
             
-        ax.set_xlabel('Carpetas de Homicidio')
+        ax.set_xlabel('Homicidios Consumados')
         ax.xaxis.set_major_formatter('{x:,.0f}')
         ax.set_xlim(0, max_val * 1.15)
         ax.grid(True, linestyle='--', alpha=0.5, axis='x')
         st.pyplot(fig)
         st.caption(
-            '🚨 **Insight clave:** Guanajuato (1,663), Estado de México (1,473) y Michoacán (1,343) encabezan la cifra absoluta de homicidios,'
-            ' concentrando en conjunto el 22.6% del total nacional en los primeros siete meses de 2026.'
+            '🚨 **Insight clave:** Al enfocarse en homicidios consumados (18,406 casos sin tentativas),'
+            ' Guanajuato (1,544), Estado de México (1,473) y Michoacán (1,310) encabezan la cifra absoluta nacional,'
+            ' concentrando en conjunto el 23.5% de todas las muertes violentas del país (dolosas + culposas).'
         )
 
     with col_pie:
