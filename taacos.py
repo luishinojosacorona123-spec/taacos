@@ -74,6 +74,14 @@ def sanitize_and_filter_homicidios(df: pd.DataFrame) -> pd.DataFrame:
                 .str.strip()
             )
 
+    # Normalización de nombres de entidades federativas
+    if 'entidad' in df.columns:
+        df['entidad'] = df['entidad'].replace({
+            'México': 'Estado de México',
+            'Michoacán de Ocampo': 'Michoacán',
+            'Veracruz de Ignacio de la Llave': 'Veracruz',
+        })
+
     # Saneamiento de meses numéricos
     for m in MESES_OFICIALES:
         if m in df.columns:
