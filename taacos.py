@@ -309,7 +309,7 @@ st.markdown('---')
 # 4. PALETA DE COLOR UNIFICADA POR MODALIDAD Y SUBTIPO
 # ==============================================================================
 PALETA_SUBTIPOS = {
-    'Homicidio culposo': '#2b6cb0',                 # Azul corporativo
+    'Homicidio culposo': '#1a1a1a',                 # Negro / Grafito elegante
     'Homicidio doloso': '#e53e3e',                  # Rojo
     'Tentativa de homicidio doloso': '#dd6b20',     # Naranja
 }
