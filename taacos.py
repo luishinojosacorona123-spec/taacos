@@ -7,629 +7,591 @@ import seaborn as sns
 import streamlit as st
 
 st.set_page_config(
-    page_title='Análisis de Homicidios en México (Enero a Julio 2026) - SESNSP',
+    page_title='Gestión de Portafolio Inmobiliario y Rentas (Enero a Octubre 2026)',
     layout='wide',
     initial_sidebar_state='expanded',
 )
 
 # ==============================================================================
 # 1. ARQUITECTURA DE ALMACENAMIENTO DE OBJETOS EN LA NUBE
-# - Zona raw/   : Datos de homicidios del SESNSP (homicidios_2026_raw.csv)
-# - Zona clean/ : Datos depurados y validados para el tablero (homicidios_2026_clean.csv)
-# EL DASHBOARD SE ENFOCA EXCLUSIVAMENTE EN EL ANÁLISIS DE HOMICIDIOS.
+# - Zona raw/   : Dataset original del portafolio inmobiliario (portafolio_inmuebles_raw.csv)
+# - Zona clean/ : Dataset procesado, validado y normalizado (portafolio_inmuebles_clean.csv)
 # ==============================================================================
 
 DEFAULT_CLEAN_CLOUD_URL = (
-    'https://raw.githubusercontent.com/luishinojosacorona123-spec/taacos/main/clean/homicidios_2026_clean.csv'
+    'https://raw.githubusercontent.com/luishinojosacorona123-spec/taacos/main/clean/portafolio_inmuebles_clean.csv'
 )
 
 DEFAULT_RAW_CLOUD_URL = (
-    'https://raw.githubusercontent.com/luishinojosacorona123-spec/taacos/main/raw/homicidios_2026_raw.csv'
+    'https://raw.githubusercontent.com/luishinojosacorona123-spec/taacos/main/raw/portafolio_inmuebles_raw.csv'
 )
 
-LOCAL_CLEAN_PATH = os.path.join(os.path.dirname(__file__), 'clean', 'homicidios_2026_clean.csv')
-LOCAL_RAW_PATH = os.path.join(os.path.dirname(__file__), 'raw', 'homicidios_2026_raw.csv')
-BACKUP_CLEAN_PATH = os.path.join(os.path.dirname(__file__), 'clean', 'incidencia_delictiva_2026_clean.csv')
+LOCAL_CLEAN_PATH = os.path.join(os.path.dirname(__file__), 'clean', 'portafolio_inmuebles_clean.csv')
+LOCAL_RAW_PATH = os.path.join(os.path.dirname(__file__), 'raw', 'portafolio_inmuebles_raw.csv')
 
-MESES_OFICIALES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio']
+MESES_ORDEN = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo',
+    'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre'
+]
+
+PALETA_CATEGORIAS = {
+    'Casas': '#2b6cb0',        # Azul corporativo
+    'Terrenos': '#2f855a',     # Verde bosque
+    'Departamento': '#805ad5', # Morado elegante
+    'Vehículos': '#dd6b20',    # Naranja cálido
+}
 
 # ==============================================================================
 # 2. CAPA DE BACKEND: CARGA Y LIMPIEZA DE DATOS CON @st.cache_data
 # ==============================================================================
 
-def sanitize_and_filter_homicidios(df: pd.DataFrame) -> pd.DataFrame:
-    """Estandariza los nombres de columnas y filtra exclusivamente registros de Homicidio."""
-    new_cols = []
-    for c in df.columns:
-        c_str = str(c).strip()
-        if 'Bien' in c_str or 'jur' in c_str.lower():
-            new_cols.append('bien_juridico_afectado')
-        elif 'Clave' in c_str or 'clave' in c_str.lower():
-            new_cols.append('clave_ent')
-        elif 'Entidad' in c_str or 'entidad' in c_str.lower():
-            new_cols.append('entidad')
-        elif 'Subtipo' in c_str or 'subtipo' in c_str.lower():
-            new_cols.append('subtipo_delito')
-        elif 'Tipo' in c_str or 'tipo' in c_str.lower():
-            new_cols.append('tipo_delito')
-        elif 'Modalidad' in c_str or 'modalidad' in c_str.lower():
-            new_cols.append('modalidad')
-        elif 'Añ' in c_str or 'Ano' in c_str or 'año' in c_str.lower():
-            new_cols.append('anio')
-        else:
-            new_cols.append(c_str)
-    df.columns = new_cols
-
-    # Saneamiento de cadenas de texto y normalización ortográfica
-    for col in ['entidad', 'bien_juridico_afectado', 'tipo_delito', 'subtipo_delito', 'modalidad']:
-        if col in df.columns:
-            df[col] = (
-                df[col].astype(str)
-                .str.replace('trÃ¡nsito', 'tránsito', regex=False)
-                .str.replace('MÃ©xico', 'México', regex=False)
-                .str.replace('MichoacÃ¡n', 'Michoacán', regex=False)
-                .str.replace('QuerÃ©taro', 'Querétaro', regex=False)
-                .str.replace('San Luis PotosÃ­', 'San Luis Potosí', regex=False)
-                .str.replace('YucatÃ¡n', 'Yucatán', regex=False)
-                .str.strip()
-            )
-
-    # Normalización de nombres de entidades federativas
-    if 'entidad' in df.columns:
-        df['entidad'] = df['entidad'].replace({
-            'México': 'Estado de México',
-            'Michoacán de Ocampo': 'Michoacán',
-            'Veracruz de Ignacio de la Llave': 'Veracruz',
-        })
-
-    # Saneamiento de meses numéricos
-    for m in MESES_OFICIALES:
-        if m in df.columns:
-            df[m] = pd.to_numeric(df[m], errors='coerce').fillna(0).astype(int)
-        else:
-            df[m] = 0
-
-    # FILTRO ESTRICTO: ENFOCADO EXCLUSIVAMENTE EN HOMICIDIOS
-    if 'tipo_delito' in df.columns:
-        df = df[df['tipo_delito'] == 'Homicidio'].copy()
-
-    df['total_delitos'] = df[MESES_OFICIALES].sum(axis=1)
-    return df
-
-
 @st.cache_data(ttl=600, show_spinner=False)
-def load_and_clean_data(cloud_url: str) -> pd.DataFrame:
-    """Descarga los datos de homicidios directamente desde la nube o lee la copia local de respaldo."""
+def load_portfolio_data(clean_url: str = DEFAULT_CLEAN_CLOUD_URL, local_path: str = LOCAL_CLEAN_PATH):
+    """Carga los datos depurados del portafolio inmobiliario desde la nube o respaldo local."""
     df = None
-    try:
-        df = pd.read_csv(cloud_url, encoding='utf-8-sig')
-    except Exception:
-        if os.path.exists(LOCAL_CLEAN_PATH):
-            df = pd.read_csv(LOCAL_CLEAN_PATH, encoding='utf-8-sig')
-        elif os.path.exists(LOCAL_RAW_PATH):
-            df = pd.read_csv(LOCAL_RAW_PATH, encoding='utf-8-sig')
-        elif os.path.exists(BACKUP_CLEAN_PATH):
-            df = pd.read_csv(BACKUP_CLEAN_PATH, encoding='utf-8-sig')
+    source = 'Local'
 
+    # 1. Intento de carga remota desde GitHub / Cloud Storage
+    if clean_url:
+        try:
+            df = pd.read_csv(clean_url, encoding='utf-8')
+            source = 'Cloud (GitHub raw)'
+        except Exception:
+            df = None
+
+    # 2. Respaldo local
     if df is None:
-        raise FileNotFoundError("No se encontró el archivo de datos de homicidios.")
-
-    return sanitize_and_filter_homicidios(df)
-
-
-@st.cache_data(show_spinner=False)
-def etl_clean_pipeline(df_raw: pd.DataFrame) -> pd.DataFrame:
-    """Pipeline ETL para procesar archivos recién ingestados en la zona raw/."""
-    return sanitize_and_filter_homicidios(df_raw.copy())
-
-
-# ==============================================================================
-# 3. CAPA DE FRONTEND: CONFIGURACIÓN, INGESTA Y WIDGETS DE FILTRADO
-# ==============================================================================
-
-with st.sidebar:
-    st.header('☁️ Almacenamiento en la Nube')
-    st.markdown("""
-    **Zonas de Almacenamiento (Data Lakehouse):**
-    - 📁 `raw/`: Datos del SESNSP tal como llegaron.
-    - 📁 `clean/`: Datos depurados y filtrados de homicidios.
-    """)
-
-    cloud_storage_url = st.text_input(
-        '🌐 Endpoint de la Nube (Zona `clean/`):',
-        value=DEFAULT_CLEAN_CLOUD_URL,
-        help='URL pública para el dataset de homicidios en la zona clean/',
-    )
-
-    uploaded_raw_file = st.file_uploader(
-        '📥 Ingesta a Zona `raw/` (CSV o Excel):',
-        type=['csv', 'xlsx'],
-        key='sidebar_raw_uploader',
-        help='Carga un archivo de datos para su procesamiento dinámico.',
-    )
-
-
-# ----------------- EJECUCIÓN DEL BACKEND (CARGA) -----------------
-if uploaded_raw_file is not None:
-    try:
-        if uploaded_raw_file.name.endswith('.xlsx'):
-            df_uploaded = pd.read_excel(uploaded_raw_file)
+        if os.path.exists(local_path):
+            df = pd.read_csv(local_path, encoding='utf-8')
+            source = 'Local Storage (clean/)'
         else:
-            df_uploaded = pd.read_csv(uploaded_raw_file)
-        df_base = etl_clean_pipeline(df_uploaded)
-        st.sidebar.success(
-            f'✅ Archivo `{uploaded_raw_file.name}` procesado: {len(df_base):,} registros de homicidios.'
-        )
-    except Exception as e:
-        st.sidebar.error(f'Error al procesar archivo: {e}')
-        df_base = load_and_clean_data(DEFAULT_CLEAN_CLOUD_URL)
-else:
-    try:
-        df_base = load_and_clean_data(cloud_storage_url)
-    except Exception as e:
-        st.sidebar.error(f'Error al conectar: {e}. Usando respaldo local...')
-        df_base = load_and_clean_data(LOCAL_CLEAN_PATH)
+            raise FileNotFoundError(f"No se encontró el dataset en '{clean_url}' ni en '{local_path}'.")
 
+    # Asegurar tipos de datos numéricos
+    cols_num = ['valor_propiedad', 'renta_mensual', 'num_mes', 'ingreso_renta', 'gasto_operativo', 'utilidad_neta']
+    for col in cols_num:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-# ----------------- WIDGETS DE FILTRADO INTERACTIVO (FRONTEND) -----------------
-with st.sidebar:
-    st.markdown('---')
-    st.header('🎯 Filtros Especializados de Homicidios')
-
-    # Widget 1: Entidades Federativas
-    entidades_disponibles = sorted(df_base['entidad'].dropna().unique().tolist())
-    filtro_entidades = st.multiselect(
-        '📍 Entidad Federativa (Estado):',
-        options=entidades_disponibles,
-        default=entidades_disponibles,
-        help='Selecciona una o más entidades para analizar.',
-    )
-
-    # Widget 2: Subtipo de Homicidio
-    subtipos_disponibles = sorted(df_base['subtipo_delito'].dropna().unique().tolist())
-    filtro_subtipos = st.multiselect(
-        '⚖️ Subtipo Jurídico de Homicidio:',
-        options=subtipos_disponibles,
-        default=subtipos_disponibles,
-        help='Filtra por homicidio doloso, culposo o tentativa.',
-    )
-
-    # Widget 3: Modalidad de Comisión
-    modalidades_disponibles = sorted(
-        df_base[df_base['subtipo_delito'].isin(filtro_subtipos)]['modalidad'].dropna().unique().tolist()
-    ) if filtro_subtipos else sorted(df_base['modalidad'].dropna().unique().tolist())
-
-    filtro_modalidades = st.multiselect(
-        '🔫 Medio o Modalidad de Comisión:',
-        options=modalidades_disponibles,
-        default=modalidades_disponibles,
-        help='Arma de fuego, arma blanca, accidente de tránsito, etc.',
-    )
-
-    # Widget 4: Meses a Analizar
-    filtro_meses = st.multiselect(
-        '📅 Meses Analizados (2026):',
-        options=MESES_OFICIALES,
-        default=MESES_OFICIALES,
-        help='Selecciona los meses considerados en el cálculo.',
-    )
-
-    # Botón de Restablecimiento
-    if st.button('🔄 Restablecer Filtros'):
-        st.rerun()
-
-
-# ----------------- APLICACIÓN DE FILTROS AL CONJUNTO DE DATOS -----------------
-df_filtered = df_base.copy()
-
-if filtro_entidades:
-    df_filtered = df_filtered[df_filtered['entidad'].isin(filtro_entidades)]
-else:
-    df_filtered = df_filtered.iloc[0:0]
-
-if filtro_subtipos:
-    df_filtered = df_filtered[df_filtered['subtipo_delito'].isin(filtro_subtipos)]
-else:
-    df_filtered = df_filtered.iloc[0:0]
-
-if filtro_modalidades:
-    df_filtered = df_filtered[df_filtered['modalidad'].isin(filtro_modalidades)]
-else:
-    df_filtered = df_filtered.iloc[0:0]
-
-meses_activos = filtro_meses if filtro_meses else MESES_OFICIALES
-df_filtered['total_delitos'] = df_filtered[meses_activos].sum(axis=1)
+    return df, source
 
 
 # ==============================================================================
-# ÁREA PRINCIPAL: KPIs Y GRÁFICOS INTERACTIVOS (FRONTEND)
+# 3. INTERFAZ DE USUARIO: CSS Y CONFIGURACIÓN ESTÉTICA
 # ==============================================================================
 
-st.title('Tablero Especializado: Análisis de Homicidios en México (Enero a Julio 2026)')
-st.caption(
-    'Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública (SESNSP) | '
-    f'Corte Enero - Julio 2026 ({len(df_filtered):,} registros filtrados de {len(df_base):,} totales)'
+st.markdown(
+    """
+    <style>
+    .main-title {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #1a202c;
+        margin-bottom: 0.2rem;
+    }
+    .sub-title {
+        font-size: 1.05rem;
+        color: #4a5568;
+        margin-bottom: 1.5rem;
+    }
+    .metric-card {
+        background-color: #ffffff;
+        border-radius: 10px;
+        padding: 1.1rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-bottom: 1rem;
+    }
+    .badge-cloud {
+        display: inline-block;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border-radius: 6px;
+        background-color: #ebf8ff;
+        color: #2b6cb0;
+        border: 1px solid #bee3f8;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
-# Control de caso borde: Sin registros seleccionados
-if df_filtered.empty or df_filtered['total_delitos'].sum() == 0:
-    st.warning(
-        '⚠️ No se encontraron registros de homicidios que coincidan con los filtros seleccionados. '
-        'Por favor selecciona al menos una entidad, subtipo, modalidad y mes en la barra lateral.'
-    )
+# Carga de datos
+try:
+    df_raw, data_source = load_portfolio_data()
+except Exception as e:
+    st.error(f"❌ Error al cargar los datos del portafolio: {e}")
     st.stop()
 
 
-# ----------------- KPI HEADER DINÁMICO -----------------
-total_homicidios = df_filtered['total_delitos'].sum()
-num_meses_sel = len(meses_activos)
-promedio_mensual = (total_homicidios / num_meses_sel) if num_meses_sel > 0 else 0
+# ==============================================================================
+# 4. BARRA LATERAL: FILTROS DINÁMICOS Y CONTROL DE DATOS
+# ==============================================================================
 
-subtipo_serie = df_filtered.groupby('subtipo_delito')['total_delitos'].sum().sort_values(ascending=False)
-if not subtipo_serie.empty:
-    subtipo_top_nombre = subtipo_serie.index[0]
-    subtipo_top_casos = subtipo_serie.iloc[0]
-    subtipo_top_pct = (subtipo_top_casos / total_homicidios) * 100 if total_homicidios > 0 else 0
-else:
-    subtipo_top_nombre = 'N/A'
-    subtipo_top_casos = 0
-    subtipo_top_pct = 0
+with st.sidebar:
+    st.title("🏢 Filtros del Portafolio")
+    st.markdown(f"<span class='badge-cloud'>Origen: {data_source}</span>", unsafe_allow_html=True)
+    st.markdown("---")
 
-# Variación del último mes activo vs mes penúltimo
-sum_meses = df_filtered[meses_activos].sum()
-if len(sum_meses) >= 2 and sum_meses.iloc[-2] > 0:
-    ultimo_mes_nombre = sum_meses.index[-1]
-    penultimo_mes_nombre = sum_meses.index[-2]
-    ultimo_mes_casos = sum_meses.iloc[-1]
-    penultimo_mes_casos = sum_meses.iloc[-2]
-    var_ultimo_mes = ((ultimo_mes_casos - penultimo_mes_casos) / penultimo_mes_casos) * 100
-    delta_str = f"{var_ultimo_mes:+.1f}% vs {penultimo_mes_nombre}"
-    ultimo_mes_label = f"Homicidios {ultimo_mes_nombre}"
-    ultimo_mes_valor = f"{ultimo_mes_casos:,.0f} casos"
-elif len(sum_meses) == 1:
-    ultimo_mes_nombre = sum_meses.index[0]
-    ultimo_mes_label = f"Homicidios {ultimo_mes_nombre}"
-    ultimo_mes_valor = f"{sum_meses.iloc[0]:,.0f} casos"
-    delta_str = "Mes único"
-else:
-    ultimo_mes_label = "Homicidios Último Mes"
-    ultimo_mes_valor = "0 casos"
-    delta_str = "0.0%"
+    # Filtro 1: Categoría de activo
+    todas_categorias = sorted(df_raw['categoria'].unique().tolist())
+    sel_todas_cat = st.checkbox("Seleccionar todas las categorías", value=True)
+    if sel_todas_cat:
+        selected_cats = st.multiselect("Categorías de Activo", todas_categorias, default=todas_categorias)
+    else:
+        selected_cats = st.multiselect("Categorías de Activo", todas_categorias, default=[todas_categorias[0]])
 
-k1, k2, k3, k4 = st.columns(4)
-k1.metric('Total Homicidios Registrados', f'{total_homicidios:,.0f} casos')
-k2.metric('Promedio Mensual', f'{promedio_mensual:,.0f} casos/mes')
-k3.metric('Subtipo Prevalente', str(subtipo_top_nombre), f'{subtipo_top_casos:,.0f} casos ({subtipo_top_pct:.1f}%)')
-k4.metric(ultimo_mes_label, ultimo_mes_valor, delta=delta_str)
+    if not selected_cats:
+        st.warning("⚠️ Selecciona al menos una categoría.")
+        st.stop()
 
-st.markdown('---')
+    df_filtered_cats = df_raw[df_raw['categoria'].isin(selected_cats)]
+
+    # Filtro 2: Propiedades
+    todas_props = sorted(df_filtered_cats['propiedad'].unique().tolist())
+    sel_todas_props = st.checkbox("Seleccionar todas las propiedades", value=True)
+    if sel_todas_props:
+        selected_props = st.multiselect("Propiedades / Activos", todas_props, default=todas_props)
+    else:
+        selected_props = st.multiselect("Propiedades / Activos", todas_props, default=[todas_props[0]])
+
+    if not selected_props:
+        st.warning("⚠️ Selecciona al menos una propiedad.")
+        st.stop()
+
+    df_filtered_props = df_filtered_cats[df_filtered_cats['propiedad'].isin(selected_props)]
+
+    # Filtro 3: Rango de meses
+    meses_disponibles = [m for m in MESES_ORDEN if m in df_filtered_props['mes'].unique()]
+    sel_todos_meses = st.checkbox("Seleccionar todos los meses", value=True)
+    if sel_todos_meses:
+        selected_meses = st.multiselect("Meses del Periodo (2026)", meses_disponibles, default=meses_disponibles)
+    else:
+        selected_meses = st.multiselect("Meses del Periodo (2026)", meses_disponibles, default=meses_disponibles[:3])
+
+    if not selected_meses:
+        st.warning("⚠️ Selecciona al menos un mes.")
+        st.stop()
+
+    # Dataset final filtrado
+    df_filtered = df_filtered_props[df_filtered_props['mes'].isin(selected_meses)].copy()
+
+    st.markdown("---")
+    st.subheader("📥 Descarga de Datasets")
+    csv_clean_bytes = df_raw.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📄 Descargar Dataset Clean (CSV)",
+        data=csv_clean_bytes,
+        file_name="portafolio_inmuebles_clean.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
+    if os.path.exists(LOCAL_RAW_PATH):
+        with open(LOCAL_RAW_PATH, 'rb') as f:
+            raw_bytes = f.read()
+        st.download_button(
+            label="📦 Descargar Dataset Raw (CSV)",
+            data=raw_bytes,
+            file_name="portafolio_inmuebles_raw.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
 
 
 # ==============================================================================
-# 4. PALETA DE COLOR UNIFICADA POR MODALIDAD Y SUBTIPO
+# 5. ENCABEZADO Y KPIS PRINCIPALES DEL PORTAFOLIO
 # ==============================================================================
-PALETA_SUBTIPOS = {
-    'Homicidio culposo': '#1a1a1a',                 # Negro / Grafito elegante
-    'Homicidio doloso': '#e53e3e',                  # Rojo
-    'Tentativa de homicidio doloso': '#dd6b20',     # Naranja
-}
 
-PALETA_MODALIDADES = {
-    'Con arma de fuego': '#e53e3e',                 # Rojo
-    'En accidente de tránsito': '#2b6cb0',         # Azul
-    'Con otro elemento': '#dd6b20',                 # Naranja
-    'No especificado': '#718096',                   # Gris
-    'Tentativa de homicidio doloso': '#319795',     # Teal
-    'Con arma blanca': '#805ad5',                   # Morado
-}
+st.markdown("<h1 class='main-title'>Gestión de Portafolio Inmobiliario y Rentas</h1>", unsafe_allow_html=True)
+st.markdown(
+    "<p class='sub-title'>Monitoreo integral de ingresos por rentas, gastos operativos, flujo de caja neto y valuación patrimonial "
+    "de 11 activos en Colima, Villa de Álvarez y Manzanillo (Enero a Octubre 2026).</p>",
+    unsafe_allow_html=True,
+)
+
+# Cálculos de KPIs
+total_ingresos = df_filtered['ingreso_renta'].sum()
+total_gastos = df_filtered['gasto_operativo'].sum()
+total_utilidad = df_filtered['utilidad_neta'].sum()
+margen_neto = (total_utilidad / total_ingresos * 100) if total_ingresos > 0 else 0
+
+# Valor patrimonial único por propiedad seleccionada
+df_props_unicas = df_filtered.drop_duplicates('propiedad')
+total_patrimonio = df_props_unicas['valor_propiedad'].sum()
+num_activos = len(df_props_unicas)
+
+col_kpi1, col_kpi2, col_kpi3, col_kpi4 = st.columns(4)
+
+with col_kpi1:
+    st.metric(
+        label="💵 Ingresos por Rentas",
+        value=f"${total_ingresos:,.0f} MXN",
+        delta=f"{len(selected_meses)} meses activos",
+    )
+
+with col_kpi2:
+    st.metric(
+        label="📉 Gastos Operativos",
+        value=f"${total_gastos:,.0f} MXN",
+        delta=f"{(total_gastos/total_ingresos*100 if total_ingresos > 0 else 0):.1f}% de ingresos",
+        delta_color="inverse",
+    )
+
+with col_kpi3:
+    st.metric(
+        label="📈 Utilidad Neta",
+        value=f"${total_utilidad:,.0f} MXN",
+        delta=f"{margen_neto:.1f}% margen neto",
+    )
+
+with col_kpi4:
+    st.metric(
+        label="🏛️ Valor Total de Activos",
+        value=f"${total_patrimonio:,.0f} MXN",
+        delta=f"{num_activos} activos filtrados",
+    )
+
+st.markdown("---")
 
 
 # ==============================================================================
-# 5. JERARQUÍA VISUAL CON st.tabs Y st.columns CON TEXTOS DE APOYO (INSIGHTS)
+# 6. PESTAÑAS ANALÍTICAS (3 PESTAÑAS - 6 GRÁFICAS ESTABLECIDAS)
 # ==============================================================================
-tab_tendencias, tab_entidades, tab_modalidades = st.tabs([
-    '📈 Tendencias y Estados Críticos',
-    '🔧 Análisis por Modalidad y Dispersión Estatal',
-    '💳 Distribución por Medio y Modalidad (Dona)',
+
+tab_flujo, tab_operativo, tab_patrimonio = st.tabs([
+    "📈 Flujo de Caja y Rentas",
+    "🔧 Análisis Operativo y Rentabilidad",
+    "💳 Composición Patrimonial y Activos"
 ])
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: TENDENCIAS Y ESTADOS CRÍTICOS (HERO CHART + BARRAS + PASTEL)
+# PESTAÑA 1: FLUJO DE CAJA MENSUAL Y RANKING DE RENTAS (HERO + BARRAS + PIE)
 # ------------------------------------------------------------------------------
-with tab_tendencias:
-    # Gráfico Principal de Mayor Jerarquía Visual (Arriba y a ancho completo)
-    st.subheader('¿Cómo evoluciona la cifra de homicidios mes a mes en México durante 2026?')
-    fig, ax = plt.subplots(figsize=(10, 4))
+with tab_flujo:
+    # 1. HERO CHART (Línea temporal a ancho completo)
+    st.subheader("¿Cómo evoluciona el flujo de caja mensual (ingresos, gastos y utilidad neta) de enero a octubre?")
     
-    mensual_totales = df_filtered[meses_activos].sum()
-    ax.plot(
-        mensual_totales.index,
-        mensual_totales.values,
-        marker='o',
-        color='#c53030',
-        linewidth=2.5,
-        markersize=7,
-        label='Homicidios Registrados',
+    # Agrupar por mes ordenado
+    df_mes = (
+        df_filtered.groupby(['num_mes', 'mes'])[['ingreso_renta', 'gasto_operativo', 'utilidad_neta']]
+        .sum()
+        .reset_index()
+        .sort_values('num_mes')
     )
-    ax.fill_between(mensual_totales.index, mensual_totales.values, color='#feb2b2', alpha=0.35)
-    
-    for m, val in zip(mensual_totales.index, mensual_totales.values):
-        ax.annotate(
-            f"{val:,.0f}",
-            (m, val),
-            textcoords="offset points",
-            xytext=(0, 8),
-            ha='center',
-            fontsize=8.5,
-            fontweight='bold',
-            color='#742a2a',
+
+    if not df_mes.empty:
+        fig_hero, ax_hero = plt.subplots(figsize=(10, 4.2))
+        ax_hero.plot(
+            df_mes['mes'],
+            df_mes['ingreso_renta'],
+            label='Ingresos por Rentas',
+            color='#3182ce',
+            lw=2.2,
+            linestyle='--',
+            marker='s'
+        )
+        ax_hero.plot(
+            df_mes['mes'],
+            df_mes['gasto_operativo'],
+            label='Gastos Operativos',
+            color='#e53e3e',
+            lw=2.2,
+            marker='^'
+        )
+        ax_hero.plot(
+            df_mes['mes'],
+            df_mes['utilidad_neta'],
+            label='Utilidad Neta',
+            color='#2b6cb0',
+            lw=2.8,
+            marker='o'
         )
 
-    ax.set_ylabel('Número de Homicidios')
-    ax.yaxis.set_major_formatter('{x:,.0f}')
-    ax.grid(True, linestyle='--', alpha=0.5)
-    if not mensual_totales.empty and max(mensual_totales.values) > 0:
-        ax.set_ylim(min(mensual_totales.values) * 0.90, max(mensual_totales.values) * 1.08)
-    
-    st.pyplot(fig)
-    st.caption(
-        '📈 **Insight clave de Temporalidad:** Los homicidios registraron su mayor punto de tensión en marzo con 3,061 carpetas,'
-        ' mostrando una desaceleración gradual hacia junio (2,634) y julio (2,650), lo que representa una reducción de 13.4% respecto al pico del primer trimestre.'
-    )
+        ax_hero.axhline(0, color='gray', linestyle=':', alpha=0.7)
+        ax_hero.fill_between(
+            df_mes['mes'],
+            df_mes['utilidad_neta'],
+            0,
+            where=(df_mes['utilidad_neta'] >= 0),
+            color='#c6f6d5',
+            alpha=0.45,
+            label='Superávit Líquido'
+        )
+        ax_hero.fill_between(
+            df_mes['mes'],
+            df_mes['utilidad_neta'],
+            0,
+            where=(df_mes['utilidad_neta'] < 0),
+            color='#fed7d7',
+            alpha=0.45,
+            label='Déficit / Inversión de Capital'
+        )
 
-    st.markdown('---')
-
-    # Fila secundaria en 2 columnas para Estados Críticos y Naturaleza Jurídica
-    col_barras, col_pie = st.columns(2)
-
-    with col_barras:
-        st.subheader('¿Cuáles son las entidades federativas con mayor número de homicidios consumados?')
-        fig, ax = plt.subplots(figsize=(8, 4.6))
-        
-        # Excluir tentativa para enfocarse con rigor en homicidios consumados (dolosos + culposos)
-        df_barras = df_filtered[~df_filtered['subtipo_delito'].str.contains('tentativa', case=False, na=False)]
-        top10_estados = df_barras.groupby('entidad')['total_delitos'].sum().sort_values(ascending=True).tail(10)
-        bars = ax.barh(top10_estados.index, top10_estados.values, color='#e53e3e', height=0.65, edgecolor='black', linewidth=0.5)
-        
-        max_val = max(top10_estados.values) if len(top10_estados) > 0 else 1
-        for bar in bars:
-            w = bar.get_width()
-            ax.text(
-                w + max_val * 0.015,
-                bar.get_y() + bar.get_height() / 2,
-                f"{w:,.0f}",
-                va='center',
-                fontsize=8.5,
+        # Anotaciones numéricas en ganancia neta
+        for m, val in zip(df_mes['mes'], df_mes['utilidad_neta']):
+            ax_hero.annotate(
+                f"${val/1000:,.1f}k",
+                (m, val),
+                textcoords="offset points",
+                xytext=(0, 8 if val >= 0 else -14),
+                ha='center',
+                fontsize=8,
                 fontweight='bold',
-                color='#742a2a',
+                color='#1a365d' if val >= 0 else '#9b2c2c',
             )
-            
-        ax.set_xlabel('Homicidios Consumados')
-        ax.xaxis.set_major_formatter('{x:,.0f}')
-        ax.set_xlim(0, max_val * 1.15)
-        ax.grid(True, linestyle='--', alpha=0.5, axis='x')
-        st.pyplot(fig)
+
+        ax_hero.set_ylabel("Monto en MXN")
+        ax_hero.yaxis.set_major_formatter('${x:,.0f}')
+        ax_hero.grid(True, linestyle='--', alpha=0.5)
+        ax_hero.legend(loc='upper right', fontsize=8.5)
+        plt.tight_layout()
+        st.pyplot(fig_hero)
         st.caption(
-            '🚨 **Insight clave:** Al enfocarse en homicidios consumados (18,406 casos sin tentativas),'
-            ' Guanajuato (1,544), Estado de México (1,473) y Michoacán (1,310) encabezan la cifra absoluta nacional,'
-            ' concentrando en conjunto el 23.5% de todas las muertes violentas del país (dolosas + culposas).'
+            "📊 **Insight clave del Flujo de Caja:** Durante enero y febrero se registraron fuertes inversiones de adecuación "
+            "y capital ($145,661 y $141,136 MXN en paneles solares, caseta y mantenimiento mayor), provocando un saldo negativo temporal. "
+            "A partir de marzo, el flujo operativo se normalizó con gastos mínimos ($8,100 - $11,350 MXN), estabilizando una **utilidad neta mensual constante superior a $84,000 MXN**."
         )
+    else:
+        st.info("No hay datos disponibles para los filtros seleccionados.")
+
+    st.markdown("---")
+
+    # Fila de 2 Columnas: Barras de Rentas vs Pie de Rentabilidad
+    col_bar, col_pie = st.columns(2)
+
+    with col_bar:
+        st.subheader("¿Cuáles son las propiedades que generan mayor ingreso por renta mensual?")
+        df_rentas = (
+            df_filtered[df_filtered['renta_mensual'] > 0]
+            .drop_duplicates('propiedad')
+            .sort_values('renta_mensual', ascending=True)
+        )
+
+        if not df_rentas.empty:
+            fig_bar, ax_bar = plt.subplots(figsize=(8, 4.8))
+            bars = ax_bar.barh(
+                df_rentas['propiedad'],
+                df_rentas['renta_mensual'],
+                color='#319795',
+                height=0.65,
+                edgecolor='black',
+                linewidth=0.5
+            )
+            max_r = df_rentas['renta_mensual'].max()
+            for bar in bars:
+                w = bar.get_width()
+                ax_bar.text(
+                    w + max_r * 0.015,
+                    bar.get_y() + bar.get_height() / 2,
+                    f"${w:,.0f} MXN",
+                    va='center',
+                    fontsize=8.5,
+                    fontweight='bold',
+                    color='#234e52'
+                )
+            ax_bar.set_xlabel("Renta Mensual Fija (MXN)")
+            ax_bar.xaxis.set_major_formatter('${x:,.0f}')
+            ax_bar.set_xlim(0, max_r * 1.25)
+            ax_bar.grid(True, linestyle='--', alpha=0.5, axis='x')
+            plt.tight_layout()
+            st.pyplot(fig_bar)
+            st.caption(
+                "🏢 **Insight clave:** El terreno **Aguacatera ($19,000 MXN)**, el departamento **Ceibas Manzanillo ($16,500 MXN)** "
+                "y la casa **Carlos Chávez ($15,500 MXN)** representan el 53.5% de la captación mensual por arrendamiento ($51,000 de $95,400 MXN)."
+            )
+        else:
+            st.info("Sin propiedades con renta activa en la selección.")
 
     with col_pie:
-        st.subheader('¿Cómo se clasifican los homicidios según su naturaleza jurídica? (Doloso vs. Culposo)')
-        fig, ax = plt.subplots(figsize=(8, 4.6))
+        st.subheader("¿Cómo se distribuyen los ingresos por rentas? (Gastos vs. Ganancia Neta)")
         
-        # Filtrar exclusivamente los homicidios consumados (excluir tentativa)
-        sub_resumen = df_filtered.groupby('subtipo_delito')['total_delitos'].sum()
-        sub_resumen = sub_resumen[~sub_resumen.index.str.contains('tentativa', case=False, na=False)]
-        total_sub = sub_resumen.sum()
-        
-        if not sub_resumen.empty and total_sub > 0:
-            colores = [PALETA_SUBTIPOS.get(s, '#718096') for s in sub_resumen.index]
-            wedges, texts, autotexts = ax.pie(
-                sub_resumen.values,
+        tot_rentas = df_filtered['ingreso_renta'].sum()
+        tot_gastos_sel = df_filtered['gasto_operativo'].sum()
+        tot_ganancia_sel = df_filtered['utilidad_neta'].sum()
+
+        if tot_rentas > 0:
+            fig_pie, ax_pie = plt.subplots(figsize=(8, 4.6))
+            pie_vals = [tot_ganancia_sel, tot_gastos_sel]
+            pie_labels = ['Ganancia Neta', 'Gastos Operativos']
+            pie_colors = ['#2b6cb0', '#e53e3e']
+
+            wedges, texts, autotexts = ax_pie.pie(
+                pie_vals,
                 labels=None,
                 autopct='%1.1f%%',
                 pctdistance=0.55,
                 startangle=140,
-                colors=colores,
-                explode=[0.03] * len(sub_resumen),
-                textprops={'fontsize': 10.5, 'weight': 'bold'},
+                colors=pie_colors,
+                explode=[0.03, 0.03],
+                textprops={'fontsize': 10.5, 'weight': 'bold', 'color': 'white'},
                 wedgeprops={'edgecolor': 'white', 'linewidth': 2},
             )
             for at in autotexts:
                 at.set_color('white')
-            ax.axis('equal')
+            ax_pie.axis('equal')
+            
             labels_legend = [
-                f"{lbl}: {val:,.0f} casos ({val/total_sub*100:.1f}%)"
-                for lbl, val in zip(sub_resumen.index, sub_resumen.values)
+                f"{lbl}: ${val:,.0f} MXN ({val/tot_rentas*100:.1f}%)"
+                for lbl, val in zip(pie_labels, pie_vals)
             ]
-            ax.legend(
+            ax_pie.legend(
                 wedges,
                 labels_legend,
-                title='Naturaleza Jurídica',
+                title='Destino del Ingreso',
                 loc='center left',
                 bbox_to_anchor=(1.02, 0.5),
                 fontsize=9,
                 title_fontsize=10,
             )
+            plt.tight_layout()
+            st.pyplot(fig_pie)
+            st.caption(
+                f"⚖️ **Insight clave:** Del total de ingresos captados (${tot_rentas:,.0f} MXN), el **{tot_ganancia_sel/tot_rentas*100:.1f}%** "
+                f"(${tot_ganancia_sel:,.0f} MXN) se consolidó como utilidad neta líquida, mientras que el **{tot_gastos_sel/tot_rentas*100:.1f}%** "
+                f"(${tot_gastos_sel:,.0f} MXN) fue absorbido por gastos y remodelaciones."
+            )
         else:
-            ax.text(0.5, 0.5, 'Sin registros de homicidios dolosos o culposos consumados', ha='center', va='center')
-            
-        st.pyplot(fig)
-        st.caption(
-            '⚖️ **Insight clave:** Al enfocarse estrictamente en homicidios consumados (18,406 casos sin tentativa),'
-            ' el **51.1%** corresponden a **homicidio culposo** (9,412 casos, mayormente siniestros viales) y el'
-            ' **48.9%** a **homicidio doloso** (8,994 casos intencionales), reflejando una división casi equitativa entre violencia deliberada y accidentes fatales.'
-        )
+            st.info("Sin ingresos registrados en el periodo seleccionado.")
+
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 2: ANÁLISIS POR MODALIDAD Y DISPERSIÓN ESTATAL (BOXPLOT + SCATTER)
+# PESTAÑA 2: ANÁLISIS OPERATIVO Y DISPERSIÓN (BOXPLOT + SCATTER)
 # ------------------------------------------------------------------------------
-with tab_entidades:
+with tab_operativo:
     col_box, col_scatter = st.columns(2)
 
     with col_box:
-        st.subheader('¿Cómo se distribuye y varía la tasa de homicidios por estado según la modalidad?')
-        fig, ax = plt.subplots(figsize=(8, 4.8))
+        st.subheader("¿Cómo se distribuyen y varían los gastos mensuales según la categoría de activo?")
         
-        modalidades_analisis = [
-            'Con arma de fuego',
-            'En accidente de tránsito',
-            'Con otro elemento',
-            'No especificado',
-            'Con arma blanca',
-        ]
-        modalidades_presentes = [m for m in modalidades_analisis if m in df_filtered['modalidad'].unique()]
+        cats_presentes = [c for c in ['Casas', 'Terrenos', 'Departamento', 'Vehículos'] if c in df_filtered['categoria'].unique()]
         
-        if modalidades_presentes:
-            ent_mod = (
-                df_filtered[df_filtered['modalidad'].isin(modalidades_presentes)]
-                .groupby(['entidad', 'modalidad'])['total_delitos']
-                .sum()
-                .reset_index()
-            )
-            palette_mod = dict(zip(modalidades_presentes, sns.color_palette('Reds_r', n_colors=len(modalidades_presentes))))
-            
+        if cats_presentes and len(df_filtered) > 0:
+            fig_box, ax_box = plt.subplots(figsize=(8, 4.8))
             sns.boxplot(
-                data=ent_mod,
-                x='total_delitos',
-                y='modalidad',
-                hue='modalidad',
-                order=modalidades_presentes,
-                palette=palette_mod,
+                data=df_filtered,
+                x='gasto_operativo',
+                y='categoria',
+                hue='categoria',
+                order=cats_presentes,
+                palette=PALETA_CATEGORIAS,
                 legend=False,
-                ax=ax,
+                ax=ax_box,
                 linewidth=1.2,
                 fliersize=3.5,
                 boxprops=dict(alpha=0.85),
             )
-            ax.set_xlabel('Homicidios por Estado')
-            ax.set_ylabel('')
-            ax.xaxis.set_major_formatter('{x:,.0f}')
-            ax.grid(True, linestyle='--', alpha=0.5)
+            ax_box.set_xlabel("Gasto Mensual por Activo (MXN)")
+            ax_box.set_ylabel("")
+            ax_box.xaxis.set_major_formatter('${x:,.0f}')
+            ax_box.grid(True, linestyle='--', alpha=0.5)
+            plt.tight_layout()
+            st.pyplot(fig_box)
+            st.caption(
+                "📦 **Insight clave de Dispersión:** Las categorías de **Terrenos** y **Casas** presentan valores atípicos notables "
+                "(Gasera 1 con $80,000 en caseta y Carlos Chávez con $74,227 en paneles solares), mientras que **Departamento** y **Vehículos** "
+                "mantienen gastos operativos estables y contenidos (promedio de $1,500 MXN mensuales por cuota de coto y combustible)."
+            )
         else:
-            ax.text(0.5, 0.5, 'Sin modalidades seleccionadas para boxplot', ha='center', va='center')
-            
-        st.pyplot(fig)
-        st.caption(
-            '📦 **Insight clave:** El *homicidio con arma de fuego* exhibe la mayor variabilidad y valores atípicos severos'
-            ' (Guanajuato con 660+ y Baja California con 500+ homicidios dolosos armados), mientras que el homicidio con arma blanca es homogéneamente bajo en el país.'
-        )
+            st.info("Sin registros de gastos para graficar boxplot.")
 
     with col_scatter:
-        st.subheader('¿Existe relación entre homicidios dolosos y culposos por entidad?')
-        fig, ax = plt.subplots(figsize=(8, 4.8))
+        st.subheader("¿Existe una relación directa entre el valor comercial del inmueble y su renta mensual?")
         
-        pivot_sub = df_filtered.pivot_table(
-            index='entidad',
-            columns='subtipo_delito',
-            values='total_delitos',
-            aggfunc='sum',
-            fill_value=0,
-        ).reset_index()
+        df_inm = df_filtered[df_filtered['renta_mensual'] > 0].drop_duplicates('propiedad')
 
-        x_col = 'Homicidio doloso'
-        y_col = 'Homicidio culposo'
-
-        if x_col in pivot_sub.columns and y_col in pivot_sub.columns and len(pivot_sub) > 1:
+        if len(df_inm) >= 2:
+            fig_scat, ax_scat = plt.subplots(figsize=(8, 4.8))
             sns.scatterplot(
-                data=pivot_sub,
-                x=x_col,
-                y=y_col,
-                s=70,
-                color='#e53e3e',
+                data=df_inm,
+                x='valor_propiedad',
+                y='renta_mensual',
+                hue='categoria',
+                palette=PALETA_CATEGORIAS,
+                s=95,
                 edgecolor='black',
                 linewidth=0.6,
-                alpha=0.85,
-                ax=ax,
+                alpha=0.9,
+                ax=ax_scat,
             )
 
-            # Ajuste lineal de tendencia
-            x_vals = pivot_sub[x_col].values
-            y_vals = pivot_sub[y_col].values
+            # Regresión lineal
+            x_vals = df_inm['valor_propiedad'].values
+            y_vals = df_inm['renta_mensual'].values
             if np.std(x_vals) > 0 and np.std(y_vals) > 0:
-                m, b = np.polyfit(x_vals, y_vals, 1)
+                m_pend, b_inter = np.polyfit(x_vals, y_vals, 1)
                 r_corr = np.corrcoef(x_vals, y_vals)[0, 1]
-                x_line = np.linspace(x_vals.min(), x_vals.max(), 100)
-                ax.plot(x_line, m * x_line + b, color='#2b6cb0', linestyle='--', lw=1.8, label=f'Tendencia lineal (R = {r_corr:.2f})')
+                x_line = np.linspace(x_vals.min() * 0.9, x_vals.max() * 1.1, 100)
+                ax_scat.plot(
+                    x_line,
+                    m_pend * x_line + b_inter,
+                    color='#e53e3e',
+                    linestyle='--',
+                    lw=1.8,
+                    label=f'Tendencia lineal (R = {r_corr:.2f})'
+                )
 
-            ax.set_xlabel('Homicidios Dolosos por Estado')
-            ax.set_ylabel('Homicidios Culposos por Estado')
-            ax.xaxis.set_major_formatter('{x:,.0f}')
-            ax.yaxis.set_major_formatter('{x:,.0f}')
-            ax.legend(loc='upper left', fontsize=8.5)
-            ax.grid(True, linestyle='--', alpha=0.5)
+            for _, row in df_inm.iterrows():
+                ax_scat.annotate(
+                    row['propiedad'],
+                    (row['valor_propiedad'], row['renta_mensual']),
+                    textcoords="offset points",
+                    xytext=(0, 6),
+                    ha='center',
+                    fontsize=7.5,
+                )
+
+            ax_scat.set_xlabel("Valor Comercial Estimado (MXN)")
+            ax_scat.set_ylabel("Renta Mensual Fija (MXN)")
+            ax_scat.xaxis.set_major_formatter('${x:,.0f}')
+            ax_scat.yaxis.set_major_formatter('${x:,.0f}')
+            ax_scat.legend(loc='upper left', fontsize=8)
+            ax_scat.grid(True, linestyle='--', alpha=0.5)
+            plt.tight_layout()
+            st.pyplot(fig_scat)
+            st.caption(
+                f"⏱️ **Insight clave de Rentabilidad (Cap Rate):** Existe una correlación positiva sólida ($R = {r_corr:.2f}$) "
+                "entre el valor comercial y el canon de arrendamiento. Las propiedades habitacionales (Ceibas, Carlos Chávez, Moscú) "
+                "ofrecen un retorno anualizado (*Cap Rate*) de entre 5.3% y 7.2%, alineado a la tasa óptima del mercado patrimonial."
+            )
         else:
-            ax.text(0.5, 0.5, 'Se requieren datos de ambos subtipos para correlacionar', ha='center', va='center')
-            
-        st.pyplot(fig)
-        st.caption(
-            '⏱️ **Insight clave:** La relación entre homicidios dolosos y culposos ($R = 0.54$) revela que estados de alta violencia criminal'
-            ' (como Guanajuato y Michoacán) presentan una clara desproporción hacia el dolo, mientras que entidades metropolitanas reportan mayor peso culposo vial.'
-        )
+            st.info("Se requieren al menos 2 propiedades con renta para generar la dispersión.")
+
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: DISTRIBUCIÓN POR MEDIO Y MODALIDAD (GRÁFICA DE DONA)
+# PESTAÑA 3: DISTRIBUCIÓN PATRIMONIAL (GRÁFICA DE DONA)
 # ------------------------------------------------------------------------------
-with tab_modalidades:
-    st.subheader('¿Cómo se distribuyen los homicidios consumados según el medio de comisión?')
+with tab_patrimonio:
+    st.subheader("¿Cómo se distribuye el valor patrimonial total del portafolio según el tipo de activo?")
 
-    # 1. Eliminar la tentativa de homicidio doloso
-    df_dona = df_filtered[
-        (~df_filtered['modalidad'].str.contains('tentativa', case=False, na=False))
-        & (~df_filtered['subtipo_delito'].str.contains('tentativa', case=False, na=False))
-    ].copy()
+    df_activos_unicos = df_filtered.drop_duplicates('propiedad')
+    val_por_cat = df_activos_unicos.groupby('categoria')['valor_propiedad'].sum().sort_values(ascending=False)
+    patrimonio_total_sel = val_por_cat.sum()
 
-    # 2. Juntar "Con otro elemento" con "No especificado"
-    df_dona['modalidad_dona'] = df_dona['modalidad'].replace({
-        'Con otro elemento': 'Otro elemento / No especificado',
-        'No especificado': 'Otro elemento / No especificado',
-    })
+    if patrimonio_total_sel > 0:
+        etiquetas_dona = val_por_cat.index.tolist()
+        valores_dona = val_por_cat.values.tolist()
+        colores_dona = [PALETA_CATEGORIAS.get(c, '#718096') for c in etiquetas_dona]
 
-    # Asegurar ortografía limpia en accidente de tránsito
-    df_dona['modalidad_dona'] = df_dona['modalidad_dona'].apply(
-        lambda x: 'En accidente de tránsito' if 'accidente' in str(x).lower() else x
-    )
-
-    mod_summary = (
-        df_dona.groupby('modalidad_dona')['total_delitos']
-        .sum()
-        .sort_values(ascending=False)
-    )
-    total_consumados = mod_summary.sum()
-
-    PALETA_DONA = {
-        'Con arma de fuego': '#e53e3e',                  # Rojo
-        'En accidente de tránsito': '#2b6cb0',          # Azul
-        'Otro elemento / No especificado': '#ed8936',   # Naranja cálido
-        'Con arma blanca': '#805ad5',                    # Morado
-    }
-
-    if total_consumados > 0:
-        etiquetas = mod_summary.index.tolist()
-        valores = mod_summary.values.tolist()
-        colores = [PALETA_DONA.get(m, '#718096') for m in etiquetas]
-
-        # Gráfica de Dona (Donut Chart)
-        fig, ax = plt.subplots(figsize=(8.5, 4.8))
-        wedges, texts, autotexts = ax.pie(
-            valores,
+        fig_dona, ax_dona = plt.subplots(figsize=(8.5, 4.8))
+        wedges, texts, autotexts = ax_dona.pie(
+            valores_dona,
             labels=None,
             autopct='%1.1f%%',
             pctdistance=0.76,
             startangle=140,
-            colors=colores,
+            colors=colores_dona,
             wedgeprops=dict(width=0.42, edgecolor='white', linewidth=2),
             textprops=dict(fontsize=9, fontweight='bold', color='white'),
         )
 
-        # Texto en el centro de la dona
-        ax.text(0, 0.08, 'Homicidios Consumados', ha='center', va='center', fontsize=9, color='#718096')
-        ax.text(
+        # Centro de la dona
+        ax_dona.text(0, 0.08, 'Valor Patrimonial', ha='center', va='center', fontsize=9, color='#718096')
+        ax_dona.text(
             0,
             -0.08,
-            f"{total_consumados:,.0f}\nCasos",
+            f"${patrimonio_total_sel:,.0f}\nMXN",
             ha='center',
             va='center',
             fontsize=11,
@@ -637,48 +599,48 @@ with tab_modalidades:
             color='#1a202c',
         )
 
-        # Leyenda descriptiva a la derecha
         legend_labels = [
-            f"{etiqueta}: {val:,.0f} ({val/total_consumados*100:.1f}%)"
-            for etiqueta, val in zip(etiquetas, valores)
+            f"{cat}: ${val:,.0f} MXN ({val/patrimonio_total_sel*100:.1f}%)"
+            for cat, val in zip(etiquetas_dona, valores_dona)
         ]
-        ax.legend(
+        ax_dona.legend(
             wedges,
             legend_labels,
-            title='Modalidad o Medio',
+            title='Tipo de Activo',
             loc='center left',
             bbox_to_anchor=(1.02, 0.5),
             fontsize=8.5,
             title_fontsize=9.5,
         )
-        ax.axis('equal')
+        ax_dona.axis('equal')
         plt.tight_layout()
-        st.pyplot(fig)
+        st.pyplot(fig_dona)
 
-        # Tarjetas de diagnóstico cuantitativo (Las 4 Categorías Consolidadas)
-        cols = st.columns(len(etiquetas))
-        for col, (modalidad_nombre, valor_mod) in zip(cols, mod_summary.items()):
-            pct = (valor_mod / total_consumados) * 100
-            nombre_corto = modalidad_nombre if len(modalidad_nombre) <= 22 else modalidad_nombre[:20] + ".."
-            col.metric(
-                label=nombre_corto,
-                value=f"{valor_mod:,.0f} casos",
-                delta=f"{pct:.1f}% del total",
+        # Tarjetas cuantitativas por categoría
+        cols_tarjetas = st.columns(len(etiquetas_dona))
+        for col_t, (cat_nombre, val_cat_num) in zip(cols_tarjetas, val_por_cat.items()):
+            pct = (val_cat_num / patrimonio_total_sel) * 100
+            col_t.metric(
+                label=cat_nombre,
+                value=f"${val_cat_num:,.0f} MXN",
+                delta=f"{pct:.1f}% del portafolio",
             )
 
-        # Resumen e insights ejecutivos de política de seguridad
-        fuego_total = mod_summary.get('Con arma de fuego', 0)
-        fuego_pct = (fuego_total / total_consumados) * 100 if total_consumados > 0 else 0
-        transito_total = mod_summary.get('En accidente de tránsito', 0)
-        transito_pct = (transito_total / total_consumados) * 100 if total_consumados > 0 else 0
-        otros_total = mod_summary.get('Otro elemento / No especificado', 0)
-        otros_pct = (otros_total / total_consumados) * 100 if total_consumados > 0 else 0
-
         st.caption(
-            f"🛡️ **Insight clave de Homicidios Consumados:** Se excluyeron las tentativas para reflejar con rigor los "
-            f"**{total_consumados:,.0f} homicidios consumados**. El **{fuego_pct:.1f}%** ({fuego_total:,.0f} casos) fueron perpetrados con **arma de fuego** "
-            f"y el **{transito_pct:.1f}%** ({transito_total:,.0f} casos) en **accidentes de tránsito**. Asimismo, se consolidaron las categorías de "
-            f"*Con otro elemento* y *No especificado*, sumando **{otros_pct:.1f}%** ({otros_total:,.0f} casos)."
+            f"🏛️ **Insight clave de Composición Patrimonial:** El portafolio totaliza **${patrimonio_total_sel:,.0f} MXN** "
+            "distribuido estratégicamente en 4 terrenos comerciales/suburbanos ($12.0M, 48.7%), 4 casas habitacionales ($9.65M, 39.1%), "
+            "un departamento vacacional/residencial en Manzanillo ($2.75M, 11.2%) y activos vehiculares de soporte ($250k, 1.0%)."
         )
     else:
-        st.info('No hay registros de homicidios consumados para los filtros seleccionados.')
+        st.info("Sin activos patrimoniales para graficar dona.")
+
+
+# ==============================================================================
+# 7. TABLA DE DATOS DETALLADA Y AUDITORÍA
+# ==============================================================================
+
+with st.expander("🔍 Ver y Explorar Dataset Detallado del Portafolio"):
+    st.dataframe(
+        df_filtered[['propiedad', 'categoria', 'ubicacion', 'mes', 'ingreso_renta', 'gasto_operativo', 'utilidad_neta', 'valor_propiedad']],
+        use_container_width=True,
+    )

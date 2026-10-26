@@ -1,6 +1,6 @@
-# Dashboard Taller Mecánico GDL 🚗🔧
+# Dashboard de Gestión de Portafolio Inmobiliario y Rentas 🏢📈
 
-Dashboard interactivo desarrollado en Streamlit para el análisis financiero y operativo de servicios mecánicos en Guadalajara.
+Dashboard interactivo y analítico desarrollado en Streamlit para el monitoreo financiero, control de flujo de caja, gastos operativos y valuación patrimonial de activos inmobiliarios en Colima, Villa de Álvarez y Manzanillo (Enero a Octubre 2026).
 
 ## 🚀 Requisitos e Instalación
 
@@ -20,10 +20,13 @@ Dashboard interactivo desarrollado en Streamlit para el análisis financiero y o
    streamlit run taacos.py
    ```
 
-## 📊 Métricas y Visualizaciones
-- Evolución de facturación semanal
-- Concentración de importes por ticket
-- Matriz de correlación de costos
-- Relación mano de obra vs. duración
-- Análisis espectral de periodicidad (FFT)
-- Facturación por líneas de servicio
+## 📊 Arquitectura y Preguntas Analíticas Adaptadas
+
+El dashboard implementa la arquitectura de almacenamiento de datos (`raw/` y `clean/`) y da respuesta a 6 preguntas analíticas mediante visualizaciones establecidas:
+
+1. **📈 Flujo de Caja y Rentas (Hero Chart)**: *¿Cómo evoluciona el flujo de caja mensual (ingresos, gastos y utilidad neta) de enero a octubre?*
+2. **🏢 Ranking de Captación (Gráfica de Barras Horizontales)**: *¿Cuáles son las propiedades que generan mayor ingreso por renta mensual?*
+3. **⚖️ Destino de Ingresos (Gráfica de Pastel / Pie Chart)**: *¿Cómo se distribuyen los ingresos por rentas? (Gastos Operativos vs. Ganancia Neta)*
+4. **📦 Dispersión Operativa (Boxplot)**: *¿Cómo se distribuyen y varían los gastos mensuales según la categoría de activo?*
+5. **⏱️ Rentabilidad y Retorno (Diagrama de Dispersión / Scatter Plot)**: *¿Existe una relación directa entre el valor comercial del inmueble y su renta mensual?*
+6. **💳 Composición Patrimonial (Gráfica de Dona / Donut Chart)**: *¿Cómo se distribuye el valor patrimonial total del portafolio según el tipo de activo?*
