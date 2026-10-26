@@ -60,10 +60,19 @@ def sanitize_and_filter_homicidios(df: pd.DataFrame) -> pd.DataFrame:
             new_cols.append(c_str)
     df.columns = new_cols
 
-    # Saneamiento de cadenas de texto
+    # Saneamiento de cadenas de texto y normalización ortográfica
     for col in ['entidad', 'bien_juridico_afectado', 'tipo_delito', 'subtipo_delito', 'modalidad']:
         if col in df.columns:
-            df[col] = df[col].astype(str).str.strip()
+            df[col] = (
+                df[col].astype(str)
+                .str.replace('trÃ¡nsito', 'tránsito', regex=False)
+                .str.replace('MÃ©xico', 'México', regex=False)
+                .str.replace('MichoacÃ¡n', 'Michoacán', regex=False)
+                .str.replace('QuerÃ©taro', 'Querétaro', regex=False)
+                .str.replace('San Luis PotosÃ­', 'San Luis Potosí', regex=False)
+                .str.replace('YucatÃ¡n', 'Yucatán', regex=False)
+                .str.strip()
+            )
 
     # Saneamiento de meses numéricos
     for m in MESES_OFICIALES:
@@ -543,19 +552,43 @@ with tab_entidades:
 # PESTAÑA 3: DISTRIBUCIÓN POR MEDIO Y MODALIDAD (GRÁFICA DE DONA)
 # ------------------------------------------------------------------------------
 with tab_modalidades:
-    st.subheader('¿Cómo se distribuyen los homicidios según el medio o modalidad de comisión?')
-    
+    st.subheader('¿Cómo se distribuyen los homicidios consumados según el medio de comisión?')
+
+    # 1. Eliminar la tentativa de homicidio doloso
+    df_dona = df_filtered[
+        (~df_filtered['modalidad'].str.contains('tentativa', case=False, na=False))
+        & (~df_filtered['subtipo_delito'].str.contains('tentativa', case=False, na=False))
+    ].copy()
+
+    # 2. Juntar "Con otro elemento" con "No especificado"
+    df_dona['modalidad_dona'] = df_dona['modalidad'].replace({
+        'Con otro elemento': 'Otro elemento / No especificado',
+        'No especificado': 'Otro elemento / No especificado',
+    })
+
+    # Asegurar ortografía limpia en accidente de tránsito
+    df_dona['modalidad_dona'] = df_dona['modalidad_dona'].apply(
+        lambda x: 'En accidente de tránsito' if 'accidente' in str(x).lower() else x
+    )
+
     mod_summary = (
-        df_filtered.groupby('modalidad')['total_delitos']
+        df_dona.groupby('modalidad_dona')['total_delitos']
         .sum()
         .sort_values(ascending=False)
     )
-    total_global = mod_summary.sum()
+    total_consumados = mod_summary.sum()
 
-    if total_global > 0:
+    PALETA_DONA = {
+        'Con arma de fuego': '#e53e3e',                  # Rojo
+        'En accidente de tránsito': '#2b6cb0',          # Azul
+        'Otro elemento / No especificado': '#ed8936',   # Naranja cálido
+        'Con arma blanca': '#805ad5',                    # Morado
+    }
+
+    if total_consumados > 0:
         etiquetas = mod_summary.index.tolist()
         valores = mod_summary.values.tolist()
-        colores = [PALETA_MODALIDADES.get(m, '#718096') for m in etiquetas]
+        colores = [PALETA_DONA.get(m, '#718096') for m in etiquetas]
 
         # Gráfica de Dona (Donut Chart)
         fig, ax = plt.subplots(figsize=(8.5, 4.8))
@@ -567,15 +600,15 @@ with tab_modalidades:
             startangle=140,
             colors=colores,
             wedgeprops=dict(width=0.42, edgecolor='white', linewidth=2),
-            textprops=dict(fontsize=8.5, fontweight='bold', color='white'),
+            textprops=dict(fontsize=9, fontweight='bold', color='white'),
         )
 
         # Texto en el centro de la dona
-        ax.text(0, 0.08, 'Total Homicidios', ha='center', va='center', fontsize=9.5, color='#718096')
+        ax.text(0, 0.08, 'Homicidios Consumados', ha='center', va='center', fontsize=9, color='#718096')
         ax.text(
             0,
             -0.08,
-            f"{total_global:,.0f}\nCasos",
+            f"{total_consumados:,.0f}\nCasos",
             ha='center',
             va='center',
             fontsize=11,
@@ -585,7 +618,7 @@ with tab_modalidades:
 
         # Leyenda descriptiva a la derecha
         legend_labels = [
-            f"{etiqueta}: {val:,.0f} ({val/total_global*100:.1f}%)"
+            f"{etiqueta}: {val:,.0f} ({val/total_consumados*100:.1f}%)"
             for etiqueta, val in zip(etiquetas, valores)
         ]
         ax.legend(
@@ -601,11 +634,10 @@ with tab_modalidades:
         plt.tight_layout()
         st.pyplot(fig)
 
-        # Tarjetas de diagnóstico cuantitativo (Top 4 Modalidades)
-        top4_mods = mod_summary.head(4)
-        cols = st.columns(len(top4_mods))
-        for col, (modalidad_nombre, valor_mod) in zip(cols, top4_mods.items()):
-            pct = (valor_mod / total_global) * 100
+        # Tarjetas de diagnóstico cuantitativo (Las 4 Categorías Consolidadas)
+        cols = st.columns(len(etiquetas))
+        for col, (modalidad_nombre, valor_mod) in zip(cols, mod_summary.items()):
+            pct = (valor_mod / total_consumados) * 100
             nombre_corto = modalidad_nombre if len(modalidad_nombre) <= 22 else modalidad_nombre[:20] + ".."
             col.metric(
                 label=nombre_corto,
@@ -615,15 +647,17 @@ with tab_modalidades:
 
         # Resumen e insights ejecutivos de política de seguridad
         fuego_total = mod_summary.get('Con arma de fuego', 0)
-        fuego_pct = (fuego_total / total_global) * 100 if total_global > 0 else 0
+        fuego_pct = (fuego_total / total_consumados) * 100 if total_consumados > 0 else 0
         transito_total = mod_summary.get('En accidente de tránsito', 0)
-        transito_pct = (transito_total / total_global) * 100 if total_global > 0 else 0
+        transito_pct = (transito_total / total_consumados) * 100 if total_consumados > 0 else 0
+        otros_total = mod_summary.get('Otro elemento / No especificado', 0)
+        otros_pct = (otros_total / total_consumados) * 100 if total_consumados > 0 else 0
 
         st.caption(
-            f"🛡️ **Insight clave de Política de Seguridad:** El **{fuego_pct:.1f}%** de los homicidios en México se cometieron con "
-            f"**arma de fuego** ({fuego_total:,.0f} casos), siendo el vector letal determinante en la violencia organizada. "
-            f"Asimismo, los accidentes de tránsito ocupan el segundo lugar (**{transito_pct:.1f}%**, {transito_total:,.0f} casos), "
-            f"confirmando la necesidad crítica de operativos de desarme y rigurosidad en normatividad vial."
+            f"🛡️ **Insight clave de Homicidios Consumados:** Se excluyeron las tentativas para reflejar con rigor los "
+            f"**{total_consumados:,.0f} homicidios consumados**. El **{fuego_pct:.1f}%** ({fuego_total:,.0f} casos) fueron perpetrados con **arma de fuego** "
+            f"y el **{transito_pct:.1f}%** ({transito_total:,.0f} casos) en **accidentes de tránsito**. Asimismo, se consolidaron las categorías de "
+            f"*Con otro elemento* y *No especificado*, sumando **{otros_pct:.1f}%** ({otros_total:,.0f} casos)."
         )
     else:
-        st.info('No hay registros de homicidios para los filtros seleccionados.')
+        st.info('No hay registros de homicidios consumados para los filtros seleccionados.')
