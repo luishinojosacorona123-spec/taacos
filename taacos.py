@@ -408,38 +408,48 @@ with tab_tendencias:
         st.subheader('¿Cómo se clasifican los homicidios según su naturaleza jurídica? (Doloso vs. Culposo)')
         fig, ax = plt.subplots(figsize=(8, 4.6))
         
+        # Filtrar exclusivamente los homicidios consumados (excluir tentativa)
         sub_resumen = df_filtered.groupby('subtipo_delito')['total_delitos'].sum()
+        sub_resumen = sub_resumen[~sub_resumen.index.str.contains('tentativa', case=False, na=False)]
+        total_sub = sub_resumen.sum()
         
-        if not sub_resumen.empty and sub_resumen.sum() > 0:
+        if not sub_resumen.empty and total_sub > 0:
             colores = [PALETA_SUBTIPOS.get(s, '#718096') for s in sub_resumen.index]
             wedges, texts, autotexts = ax.pie(
                 sub_resumen.values,
-                labels=sub_resumen.index,
+                labels=None,
                 autopct='%1.1f%%',
+                pctdistance=0.55,
                 startangle=140,
                 colors=colores,
                 explode=[0.03] * len(sub_resumen),
-                textprops={'fontsize': 9, 'weight': 'bold'},
-                wedgeprops={'edgecolor': 'white', 'linewidth': 1.5},
+                textprops={'fontsize': 10.5, 'weight': 'bold'},
+                wedgeprops={'edgecolor': 'white', 'linewidth': 2},
             )
             for at in autotexts:
                 at.set_color('white')
             ax.axis('equal')
+            labels_legend = [
+                f"{lbl}: {val:,.0f} casos ({val/total_sub*100:.1f}%)"
+                for lbl, val in zip(sub_resumen.index, sub_resumen.values)
+            ]
             ax.legend(
                 wedges,
-                [f"{lbl}: {val:,.0f} casos" for lbl, val in zip(sub_resumen.index, sub_resumen.values)],
-                title='Subtipo',
-                loc='upper right',
-                bbox_to_anchor=(1.35, 1),
-                fontsize=8,
+                labels_legend,
+                title='Naturaleza Jurídica',
+                loc='center left',
+                bbox_to_anchor=(1.02, 0.5),
+                fontsize=9,
+                title_fontsize=10,
             )
         else:
-            ax.text(0.5, 0.5, 'Sin registros para los filtros seleccionados', ha='center', va='center')
+            ax.text(0.5, 0.5, 'Sin registros de homicidios dolosos o culposos consumados', ha='center', va='center')
             
         st.pyplot(fig)
         st.caption(
-            '⚖️ **Insight clave:** Prácticamente 1 de cada 2 homicidios es culposo (47.4%, impulsado principalmente por siniestros viales),'
-            ' mientras que el homicidio doloso representa el 45.3%, visibilizando dos frentes de acción urgentes: pacificación territorial y seguridad vial.'
+            '⚖️ **Insight clave:** Al enfocarse estrictamente en homicidios consumados (18,406 casos sin tentativa),'
+            ' el **51.1%** corresponden a **homicidio culposo** (9,412 casos, mayormente siniestros viales) y el'
+            ' **48.9%** a **homicidio doloso** (8,994 casos intencionales), reflejando una división casi equitativa entre violencia deliberada y accidentes fatales.'
         )
 
 # ------------------------------------------------------------------------------
