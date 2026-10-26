@@ -7,7 +7,7 @@ import seaborn as sns
 import streamlit as st
 
 st.set_page_config(
-    page_title='Análisis de Homicidios en México 2026 - SESNSP',
+    page_title='Análisis de Homicidios en México (Enero a Julio 2026) - SESNSP',
     layout='wide',
     initial_sidebar_state='expanded',
 )
@@ -245,7 +245,7 @@ df_filtered['total_delitos'] = df_filtered[meses_activos].sum(axis=1)
 # ÁREA PRINCIPAL: KPIs Y GRÁFICOS INTERACTIVOS (FRONTEND)
 # ==============================================================================
 
-st.title('Tablero Especializado: Análisis de Homicidios en México 2026')
+st.title('Tablero Especializado: Análisis de Homicidios en México (Enero a Julio 2026)')
 st.caption(
     'Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública (SESNSP) | '
     f'Corte Enero - Julio 2026 ({len(df_filtered):,} registros filtrados de {len(df_base):,} totales)'
