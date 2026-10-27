@@ -1,7 +1,11 @@
 # E1 · Dashboard Empresarial: Los datos cuentan su historia
 
-**Proyecto:** *PropTech Colima AI (TAACOS)* — Gestión de Portafolio Inmobiliario y Rentas  
+**Proyecto:** *RentMetrics (PropTech Colima AI - TAACOS)* — Plataforma Cloud de Gestión Patrimonial, Rentas y Cobranza  
 **Materias:** Analítica de Datos (Unidad 2, temas 2.1 a 2.8) × Cómputo en la Nube (Tema 2.4: Almacenamiento en nube)  
+**Integrantes del Equipo:**
+* **Hernández Chávez Manuel Alexander** — *Data Lead*
+* **Hinojosa Corona Luis Antonio** (`@luishinojosacorona123-spec`) — *Cloud Lead*
+
 **URL Pública del Tablero (Streamlit Cloud):** [`https://luishinojosacorona123-spec-taacos-taacos-nuiqdn.streamlit.app`](https://luishinojosacorona123-spec-taacos-taacos-nuiqdn.streamlit.app)  
 **Archivo ejecutable del Tablero:** [`taacos.py`](../taacos.py)  
 **Módulo Reproducible de Limpieza:** [`services/worker/limpiar_portafolio.py`](../services/worker/limpiar_portafolio.py)  

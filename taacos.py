@@ -14,7 +14,7 @@ except ImportError:
     pass
 
 st.set_page_config(
-    page_title='PropTech Colima · Gestión Patrimonial y Rentas (2026)',
+    page_title='RentMetrics · Gestión Inteligente de Portafolio y Rentas',
     page_icon='🏢',
     layout='wide',
     initial_sidebar_state='expanded',
@@ -493,7 +493,8 @@ except Exception as e:
 # ==============================================================================
 
 with st.sidebar:
-    st.markdown("### 🏢 Panel de Control")
+    st.markdown("### 🏢 RentMetrics Panel")
+    st.caption("👥 **Equipo:** Manuel Alexander Hernández Chávez & Luis Antonio Hinojosa Corona")
     st.caption(f"☁️ **Fuente activa:** {data_source}")
     if df_daily is not None:
         st.caption(f"📊 **Bitácora diaria:** {len(df_daily):,} registros (21 meses)")
@@ -632,10 +633,11 @@ st.markdown(
     f"""
     <div class="hero-banner">
         <div class="hero-top-row">
-            <span class="hero-badge">🏛️ PORTAFOLIO PATRIMONIAL · COLIMA, VILLA DE ÁLVAREZ Y MANZANILLO</span>
+            <span class="hero-badge">🏛️ RENTMETRICS · PORTAFOLIO PATRIMONIAL COLIMA</span>
+            <span class="hero-badge">👥 EQUIPO: M. A. HERNÁNDEZ CH. & L. A. HINOJOSA C.</span>
             <span class="hero-badge">⚡ DATA LAKE: {data_source}</span>
         </div>
-        <h1 class="hero-title">Gestión Inteligente de Portafolio Inmobiliario y Rentas</h1>
+        <h1 class="hero-title">RentMetrics · Gestión Inteligente de Portafolio y Flujo de Rentas</h1>
         <p class="hero-subtitle">
             Monitoreo ejecutivo de flujo de caja, mantenimiento operativo (OPEX/CAPEX), análisis espectral diario (FFT sobre {len(df_daily):,} registros limpios de la bitácora)
             y valuación patrimonial de <b>{num_activos} activos</b> durante <b>{num_meses_sel} meses seleccionados{nota_proyeccion}</b>.
@@ -1314,6 +1316,35 @@ with tab_recomendaciones:
         f"Consolidado Mensual (`86×23` celdas en `raw/` -> `{len(df_raw)}` registros limpios en `clean/`):"
     )
     st.dataframe(df_audit, use_container_width=True, hide_index=True)
+
+    with st.expander("📋 Ver Validación de Negocio con Cliente Real (Entrevista E0 · RentMetrics)", expanded=False):
+        st.markdown(
+            """
+            * **Proyecto:** RentMetrics · PropTech Colima  
+            * **Integrantes:** Manuel Alexander Hernández Chávez (Data Lead) & Luis Antonio Hinojosa Corona (Cloud Lead)  
+            * **Entrevistado:** Administrador y titular de portafolio patrimonial en Colima, Villa de Álvarez y Manzanillo  
+            * **Fecha y Duración:** 14 de octubre de 2026 · 18 minutos  
+
+            ---
+
+            #### Las 5 Preguntas y Respuestas Textuales de la Entrevista:
+            1. **¿Cómo fijas el precio de la renta mensual cuando una casa se queda vacía?**  
+               > *"Pregunto a otros colegas en la zona o me meto a ver anuncios en Marketplace de casas parecidas en la misma colonia. Muchas veces los dueños quieren pedir de más porque le tienen cariño a la casa, y el resultado es que la propiedad se queda sola 4 o 5 meses. Esos meses sin cobrar renta jamás se recuperan, ni cobrando caro después."*
+            2. **¿Cuál es el dolor de cabeza o problema más grande al cobrar la renta cada mes?**  
+               > *"Los inquilinos que empiezan pagando puntual el día 5 y de repente al sexto mes te pagan el 15, luego el 25, y de la nada ya te deben dos meses enteros y los servicios de luz y agua. Detectar a tiempo cuándo un inquilino ya empezó a tener problemas de liquidez antes de que la deuda se vuelva impagable es lo más difícil."*
+            3. **¿Cómo llevas el control administrativo de los contratos, vencimientos y pagos?**  
+               > *"Llevo una libreta de notas y un archivo de Excel donde anoto los recibos que entrego y las transferencias que me caen. Pero si ando mostrando casas o con trámites en notarías, se me pasa revisar quién ya se atrasó y me doy cuenta hasta que el dueño me habla para pedir su depósito mensual."*
+            4. **¿Pagarías por una herramienta que te avise qué inquilinos tienen alta probabilidad de atrasarse y cuánto flujo de rentas vas a cobrar el siguiente mes?**  
+               > *"Por supuesto. Si una plataforma me cuesta 500 o 600 pesos al mes por mis casas pero me evita un solo juicio de desalojo o me ahorra dos meses de impago, para mí ya es una inversión que se paga sola."*
+            5. **Si abrieras un sistema en tu celular todas las mañanas, ¿qué información necesitarías ver en 30 segundos?**  
+               > *"Tres cosas: cuánto dinero de rentas ya cayó este mes, qué contratos vencen en los próximos 60 días para ver renovaciones, y una lista roja con los inquilinos que tienen riesgo alto de no pagar a tiempo."*
+
+            #### Hallazgos Clave que Guiaron este Tablero:
+            * **Monitoreo de flujo en 30 segundos:** Los 4 KPIs del encabezado responden de inmediato cuánto dinero de rentas cayó, el margen libre de caja y el activo de mayor captación.
+            * **Fondo para absorber picos:** El análisis de Fourier (FFT) y las gráficas de caja respaldan la creación de una reserva quincenal para eliminar déficits operativos.
+            * **Cap Rate y fijación de renta:** La regresión valor vs. renta identifica qué activos están descalibrados respecto al mercado para evitar meses de desocupación.
+            """
+        )
 
 
 # ==============================================================================
