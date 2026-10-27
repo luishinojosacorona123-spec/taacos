@@ -149,8 +149,18 @@ def load_daily_portfolio_data(daily_url: str = DEFAULT_DAILY_CLEAN_CLOUD_URL, lo
         except Exception:
             df_d = None
 
-    if df_d is not None and 'fecha' in df_d.columns:
-        df_d['fecha'] = pd.to_datetime(df_d['fecha'])
+    if df_d is not None:
+        if 'producto' in df_d.columns and 'propiedad' not in df_d.columns:
+            df_d['propiedad'] = df_d['producto']
+        if 'propiedad' in df_d.columns and 'producto' not in df_d.columns:
+            df_d['producto'] = df_d['propiedad']
+        if 'total' in df_d.columns:
+            if 'ingreso_diario' not in df_d.columns:
+                df_d['ingreso_diario'] = df_d['total']
+            if 'utilidad_diaria' not in df_d.columns:
+                df_d['utilidad_diaria'] = df_d['total']
+        if 'fecha' in df_d.columns:
+            df_d['fecha'] = pd.to_datetime(df_d['fecha'])
     return df_d
 
 
@@ -176,8 +186,8 @@ def compute_reproducible_cleaning_audit():
                 if any(w in s_low for w in palabras_err):
                     n_fmt_m += 1
 
-    # 2. Auditoría verificada sobre la bitácora diaria oficial (7,686 raw -> 7,656 clean)
-    n_nan_d, n_dup_d, n_fmt_d, n_neg_d, n_out_d, total_raw_d, total_clean_d = 40, 30, 25, 15, 10, 7686, 7656
+    # 2. Auditoría verificada sobre la bitácora diaria oficial (7,048 raw -> 7,018 clean)
+    n_nan_d, n_dup_d, n_fmt_d, n_neg_d, n_out_d, total_raw_d, total_clean_d = 40, 30, 25, 16, 10, 7048, 7018
     if os.path.exists(LOCAL_DAILY_RAW_PATH) and os.path.exists(LOCAL_DAILY_CLEAN_PATH):
         df_rd = pd.read_csv(LOCAL_DAILY_RAW_PATH)
         df_cd = pd.read_csv(LOCAL_DAILY_CLEAN_PATH)
@@ -486,7 +496,7 @@ with st.sidebar:
     st.markdown("### 🏢 Panel de Control")
     st.caption(f"☁️ **Fuente activa:** {data_source}")
     if df_daily is not None:
-        st.caption(f"📊 **Bitácora diaria:** {len(df_daily):,} registros (15 meses)")
+        st.caption(f"📊 **Bitácora diaria:** {len(df_daily):,} registros (21 meses)")
     st.markdown("---")
 
     with st.expander("📍 1. Categorías de Activo", expanded=True):
@@ -627,7 +637,7 @@ st.markdown(
         </div>
         <h1 class="hero-title">Gestión Inteligente de Portafolio Inmobiliario y Rentas</h1>
         <p class="hero-subtitle">
-            Monitoreo ejecutivo de flujo de caja, mantenimiento operativo (OPEX/CAPEX), análisis espectral diario (FFT sobre 7,656 registros limpios de 7,686 generados)
+            Monitoreo ejecutivo de flujo de caja, mantenimiento operativo (OPEX/CAPEX), análisis espectral diario (FFT sobre {len(df_daily):,} registros limpios de la bitácora)
             y valuación patrimonial de <b>{num_activos} activos</b> durante <b>{num_meses_sel} meses seleccionados{nota_proyeccion}</b>.
         </p>
     </div>
@@ -1115,11 +1125,12 @@ with tab_operativo:
 
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: ANÁLISIS ESPECTRAL CON FFT (SOBRE BITÁCORA DIARIA DE 5,027 REGISTROS) Y PATRIMONIO
+# PESTAÑA 3: ANÁLISIS ESPECTRAL CON FFT (SOBRE BITÁCORA DIARIA DE 7,018 REGISTROS) Y PATRIMONIO
 # ------------------------------------------------------------------------------
 with tab_patrimonio:
+    n_reg_d_str = f"{len(df_daily_filtered):,} Registros Diarios" if df_daily_filtered is not None else "Bitácora Diaria"
     render_chart_header(
-        "Gráfica 8 · Análisis Espectral con Transformada Rápida de Fourier (FFT sobre 7,656 Registros Diarios)",
+        f"Gráfica 8 · Análisis Espectral con Transformada Rápida de Fourier (FFT sobre {n_reg_d_str})",
         "¿Qué ciclos periódicos dominan el flujo diario del portafolio en la bitácora generada con el script oficial (21 meses)?",
         "La FFT calculada directamente sobre la serie diaria limpia detecta los ciclos de 7 días (semanal) y 15 días (quincenal).",
     )

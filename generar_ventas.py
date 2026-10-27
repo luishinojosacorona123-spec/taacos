@@ -1,10 +1,16 @@
-"""Generador de operaciones diarias sinteticas adaptado al giro del Portafolio Inmobiliario (12 unidades/conceptos).
-Basado directamente en el script oficial del Proyecto Integrador (páginas 23 y 24):
-- Periodo: 2025-01-01 a 2026-09-30 (21 meses diarios, 638 días)
-- Volumen bruto: 7,686 registros (7,656 base + 30 duplicados)
-- Errores sembrados: 40 faltantes (NaN), 15 negativos, 10 atípicos (999), 25 en minúsculas, 30 duplicados
-  e inconsistencia lógica en la columna `total`.
-Uso: python generar_ventas.py -> raw/bitacora_diaria_portafolio_raw.csv y clean/bitacora_diaria_portafolio_clean.csv
+"""Generador de operaciones diarias SINTETICAS adaptado al portafolio inmobiliario.
+Basado en el generador oficial del Proyecto Integrador (kit de arranque, pags. 23-24): misma semilla (42),
+mismo periodo (2025-01-01 a 2026-09-30, 638 dias), mismos factores de tendencia, ciclo semanal,
+efecto quincena, temporada de calor y fiestas, y los mismos 5 tipos de errores sembrados.
+
+IMPORTANTE: estos datos son SIMULADOS. No son registros del cliente; sirven para tener volumen diario
+(>12 meses, >5,000 registros) y para el analisis espectral. Los datos reales del cliente son la matriz
+mensual raw/portafolio_inmuebles_raw.csv.
+
+Cambios respecto al kit: los 12 productos de la tiendita se sustituyen por los 11 activos del portafolio
+y el precio_unitario representa la tarifa por servicio/cobro. Volumen bruto: 638 dias x 11 activos = 7,018
++ 30 duplicados = 7,048 registros.
+Uso: python generar_ventas.py -> raw/bitacora_diaria_portafolio_raw.csv
 """
 import os
 import numpy as np
@@ -13,8 +19,7 @@ import pandas as pd
 rng = np.random.default_rng(42)
 dias = pd.date_range("2025-01-01", "2026-09-30", freq="D")
 
-# Adaptación al giro inmobiliario (12 activos/conceptos de cobro y servicio del portafolio en Colima, VdA y Manzanillo)
-# activo: (tarifa_base_mxn, frecuencia_operativa_base_diaria)
+# activo: (precio MXN por servicio/cobro, volumen base diario)
 productos = {
     "Carlos Chávez": (515, 18),
     "Palma kerpis": (330, 15),
@@ -25,24 +30,22 @@ productos = {
     "Carretera": (200, 14),
     "Aguacatera": (635, 20),
     "Ceibas": (550, 22),
-    "Local Colima Centro": (420, 15),
     "Versa 1": (150, 10),
     "Versa 2": (150, 10),
 }
 
 CATALOGO_INFO = {
-    "Carlos Chávez": ("Casas", "Colima", 3500000, 15500),
-    "Palma kerpis": ("Casas", "Colima", 2000000, 9900),
-    "Moscú": ("Casas", "Villa de Álvarez", 2700000, 14500),
-    "Agua Dulce": ("Casas", "Villa de Álvarez", 1450000, 6500),
-    "Gasera 1": ("Terrenos", "Colima", 3000000, 3000),
-    "Gasera 2": ("Terrenos", "Colima", 2500000, 4500),
-    "Carretera": ("Terrenos", "Colima", 1500000, 6000),
-    "Aguacatera": ("Terrenos", "Colima", 5000000, 19000),
-    "Ceibas": ("Departamento", "Manzanillo", 2750000, 16500),
-    "Local Colima Centro": ("Casas", "Colima", 1800000, 8500),
-    "Versa 1": ("Vehículos", "Colima", 125000, 0),
-    "Versa 2": ("Vehículos", "Colima", 125000, 0),
+    "Carlos Chávez": ("Casas", "Colima"),
+    "Palma kerpis": ("Casas", "Colima"),
+    "Moscú": ("Casas", "Villa de Álvarez"),
+    "Agua Dulce": ("Casas", "Villa de Álvarez"),
+    "Gasera 1": ("Terrenos", "Colima"),
+    "Gasera 2": ("Terrenos", "Colima"),
+    "Carretera": ("Terrenos", "Colima"),
+    "Aguacatera": ("Terrenos", "Colima"),
+    "Ceibas": ("Departamento", "Manzanillo"),
+    "Versa 1": ("Vehículos", "Colima"),
+    "Versa 2": ("Vehículos", "Colima"),
 }
 
 semana = np.array([0.85, 0.80, 0.85, 0.90, 1.10, 1.35, 1.20])  # lun..dom
@@ -57,27 +60,24 @@ for dia in dias:
         efecto_calor = calor if prod in ("Carlos Chávez", "Ceibas", "Aguacatera") else 1.0
         lam = base * tendencia * semana[dia.weekday()] * quincena * efecto_calor * fiestas
         unidades = rng.poisson(lam)
-        cat, ubic, val_prop, renta_mes = CATALOGO_INFO[prod]
-        filas.append([
-            dia.date(), prod, cat, ubic, unidades, precio, unidades * precio
-        ])
+        cat, ubic = CATALOGO_INFO[prod]
+        filas.append([dia.date(), prod, cat, ubic, unidades, precio, unidades * precio])
 
 df = pd.DataFrame(
     filas,
     columns=["fecha", "producto", "categoria", "ubicacion", "unidades", "precio_unitario", "total"],
 )
 
-# Errores sembrados para practicar preprocesamiento (exactamente los del PDF página 24)
+# Errores sembrados (los mismos del kit oficial)
 n = len(df)
 df.loc[rng.choice(n, 40, replace=False), "unidades"] = np.nan       # 40 faltantes
-df.loc[rng.choice(n, 15, replace=False), "unidades"] *= -1          # 15 errores lógicos (negativos e inconsistencia con total)
-df.loc[rng.choice(n, 10, replace=False), "unidades"] = 999          # 10 atípicos (outliers = 999)
+df.loc[rng.choice(n, 15, replace=False), "unidades"] *= -1          # 15 errores logicos (negativos)
+df.loc[rng.choice(n, 10, replace=False), "unidades"] = 999          # 10 atipicos
 idx = rng.choice(n, 25, replace=False)
-df.loc[idx, "producto"] = df.loc[idx, "producto"].str.lower()       # 25 errores de formato (minúsculas)
+df.loc[idx, "producto"] = df.loc[idx, "producto"].str.lower()       # 25 errores de formato
 df = pd.concat([df, df.sample(30, random_state=1)])                 # 30 duplicados
 df = df.sample(frac=1, random_state=2).reset_index(drop=True)
 
 os.makedirs("raw", exist_ok=True)
-os.makedirs("clean", exist_ok=True)
 df.to_csv("raw/bitacora_diaria_portafolio_raw.csv", index=False)
-print(f"[RAW] {len(df):,} registros generados de {dias[0].date()} a {dias[-1].date()}")
+print(f"[RAW] {len(df):,} registros sinteticos de {dias[0].date()} a {dias[-1].date()}")

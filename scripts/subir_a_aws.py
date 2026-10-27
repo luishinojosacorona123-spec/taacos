@@ -69,6 +69,18 @@ def main():
     s3.upload_file(clean_local, bucket_name, "clean/portafolio_inmuebles_clean.csv")
     print(f"✅ Subido: s3://{bucket_name}/clean/portafolio_inmuebles_clean.csv")
 
+    # 3.1 Subir bitácora diaria (>5,000 registros, 21 meses) a raw/ y clean/
+    raw_daily_local = os.path.join(base_dir, "raw", "bitacora_diaria_portafolio_raw.csv")
+    clean_daily_local = os.path.join(base_dir, "clean", "bitacora_diaria_portafolio_clean.csv")
+    if os.path.exists(raw_daily_local):
+        print("📤 Subiendo 'raw/bitacora_diaria_portafolio_raw.csv' a S3 (zona raw/)...")
+        s3.upload_file(raw_daily_local, bucket_name, "raw/bitacora_diaria_portafolio_raw.csv")
+        print(f"✅ Subido: s3://{bucket_name}/raw/bitacora_diaria_portafolio_raw.csv")
+    if os.path.exists(clean_daily_local):
+        print("📤 Subiendo 'clean/bitacora_diaria_portafolio_clean.csv' a S3 (zona clean/)...")
+        s3.upload_file(clean_daily_local, bucket_name, "clean/bitacora_diaria_portafolio_clean.csv")
+        print(f"✅ Subido: s3://{bucket_name}/clean/bitacora_diaria_portafolio_clean.csv")
+
     # 4. Crear marcador de la zona models/ (para E3)
     s3.put_object(Bucket=bucket_name, Key="models/.keep", Body=b"")
     print(f"✅ Zona creada: s3://{bucket_name}/models/")
