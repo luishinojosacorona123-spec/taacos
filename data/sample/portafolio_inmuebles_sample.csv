@@ -1,0 +1,111 @@
+propiedad,categoria,ubicacion,valor_propiedad,renta_mensual,mes,num_mes,ingreso_renta,gasto_operativo,utilidad_neta
+Carlos Chávez,Casas,Colima,3500000,15500,Enero,1,15500,74227,-58727
+Carlos Chávez,Casas,Colima,3500000,15500,Febrero,2,15500,2500,13000
+Carlos Chávez,Casas,Colima,3500000,15500,Marzo,3,15500,1000,14500
+Carlos Chávez,Casas,Colima,3500000,15500,Abril,4,15500,1000,14500
+Carlos Chávez,Casas,Colima,3500000,15500,Mayo,5,15500,1000,14500
+Carlos Chávez,Casas,Colima,3500000,15500,Junio,6,15500,2200,13300
+Carlos Chávez,Casas,Colima,3500000,15500,Julio,7,15500,1000,14500
+Carlos Chávez,Casas,Colima,3500000,15500,Agosto,8,15500,1000,14500
+Carlos Chávez,Casas,Colima,3500000,15500,Septiembre,9,15500,1000,14500
+Carlos Chávez,Casas,Colima,3500000,15500,Octubre,10,15500,1000,14500
+Palma kerpis,Casas,Colima,2000000,9900,Enero,1,9900,4570,5330
+Palma kerpis,Casas,Colima,2000000,9900,Febrero,2,9900,1000,8900
+Palma kerpis,Casas,Colima,2000000,9900,Marzo,3,9900,1000,8900
+Palma kerpis,Casas,Colima,2000000,9900,Abril,4,9900,1000,8900
+Palma kerpis,Casas,Colima,2000000,9900,Mayo,5,9900,1000,8900
+Palma kerpis,Casas,Colima,2000000,9900,Junio,6,9900,1000,8900
+Palma kerpis,Casas,Colima,2000000,9900,Julio,7,9900,1000,8900
+Palma kerpis,Casas,Colima,2000000,9900,Agosto,8,9900,1000,8900
+Palma kerpis,Casas,Colima,2000000,9900,Septiembre,9,9900,1000,8900
+Palma kerpis,Casas,Colima,2000000,9900,Octubre,10,9900,1000,8900
+Moscú,Casas,Villa de Álvarez,2700000,14500,Enero,1,14500,4710,9790
+Moscú,Casas,Villa de Álvarez,2700000,14500,Febrero,2,14500,800,13700
+Moscú,Casas,Villa de Álvarez,2700000,14500,Marzo,3,14500,800,13700
+Moscú,Casas,Villa de Álvarez,2700000,14500,Abril,4,14500,800,13700
+Moscú,Casas,Villa de Álvarez,2700000,14500,Mayo,5,14500,800,13700
+Moscú,Casas,Villa de Álvarez,2700000,14500,Junio,6,14500,800,13700
+Moscú,Casas,Villa de Álvarez,2700000,14500,Julio,7,14500,800,13700
+Moscú,Casas,Villa de Álvarez,2700000,14500,Agosto,8,14500,800,13700
+Moscú,Casas,Villa de Álvarez,2700000,14500,Septiembre,9,14500,800,13700
+Moscú,Casas,Villa de Álvarez,2700000,14500,Octubre,10,14500,800,13700
+Agua Dulce,Casas,Villa de Álvarez,1450000,6500,Enero,1,6500,3454,3046
+Agua Dulce,Casas,Villa de Álvarez,1450000,6500,Febrero,2,6500,836,5664
+Agua Dulce,Casas,Villa de Álvarez,1450000,6500,Marzo,3,6500,800,5700
+Agua Dulce,Casas,Villa de Álvarez,1450000,6500,Abril,4,6500,1000,5500
+Agua Dulce,Casas,Villa de Álvarez,1450000,6500,Mayo,5,6500,1000,5500
+Agua Dulce,Casas,Villa de Álvarez,1450000,6500,Junio,6,6500,1000,5500
+Agua Dulce,Casas,Villa de Álvarez,1450000,6500,Julio,7,6500,1000,5500
+Agua Dulce,Casas,Villa de Álvarez,1450000,6500,Agosto,8,6500,1000,5500
+Agua Dulce,Casas,Villa de Álvarez,1450000,6500,Septiembre,9,6500,1000,5500
+Agua Dulce,Casas,Villa de Álvarez,1450000,6500,Octubre,10,6500,1000,5500
+Gasera 1,Terrenos,Colima,3000000,3000,Enero,1,3000,27000,-24000
+Gasera 1,Terrenos,Colima,3000000,3000,Febrero,2,3000,80000,-77000
+Gasera 1,Terrenos,Colima,3000000,3000,Marzo,3,3000,0,3000
+Gasera 1,Terrenos,Colima,3000000,3000,Abril,4,3000,0,3000
+Gasera 1,Terrenos,Colima,3000000,3000,Mayo,5,3000,0,3000
+Gasera 1,Terrenos,Colima,3000000,3000,Junio,6,3000,0,3000
+Gasera 1,Terrenos,Colima,3000000,3000,Julio,7,3000,0,3000
+Gasera 1,Terrenos,Colima,3000000,3000,Agosto,8,3000,0,3000
+Gasera 1,Terrenos,Colima,3000000,3000,Septiembre,9,3000,0,3000
+Gasera 1,Terrenos,Colima,3000000,3000,Octubre,10,3000,0,3000
+Gasera 2,Terrenos,Colima,2500000,4500,Enero,1,4500,6000,-1500
+Gasera 2,Terrenos,Colima,2500000,4500,Febrero,2,4500,35000,-30500
+Gasera 2,Terrenos,Colima,2500000,4500,Marzo,3,4500,0,4500
+Gasera 2,Terrenos,Colima,2500000,4500,Abril,4,4500,0,4500
+Gasera 2,Terrenos,Colima,2500000,4500,Mayo,5,4500,0,4500
+Gasera 2,Terrenos,Colima,2500000,4500,Junio,6,4500,0,4500
+Gasera 2,Terrenos,Colima,2500000,4500,Julio,7,4500,0,4500
+Gasera 2,Terrenos,Colima,2500000,4500,Agosto,8,4500,0,4500
+Gasera 2,Terrenos,Colima,2500000,4500,Septiembre,9,4500,0,4500
+Gasera 2,Terrenos,Colima,2500000,4500,Octubre,10,4500,0,4500
+Carretera,Terrenos,Colima,1500000,6000,Enero,1,6000,8000,-2000
+Carretera,Terrenos,Colima,1500000,6000,Febrero,2,6000,0,6000
+Carretera,Terrenos,Colima,1500000,6000,Marzo,3,6000,0,6000
+Carretera,Terrenos,Colima,1500000,6000,Abril,4,6000,0,6000
+Carretera,Terrenos,Colima,1500000,6000,Mayo,5,6000,0,6000
+Carretera,Terrenos,Colima,1500000,6000,Junio,6,6000,0,6000
+Carretera,Terrenos,Colima,1500000,6000,Julio,7,6000,0,6000
+Carretera,Terrenos,Colima,1500000,6000,Agosto,8,6000,0,6000
+Carretera,Terrenos,Colima,1500000,6000,Septiembre,9,6000,0,6000
+Carretera,Terrenos,Colima,1500000,6000,Octubre,10,6000,0,6000
+Aguacatera,Terrenos,Colima,5000000,19000,Enero,1,19000,12000,7000
+Aguacatera,Terrenos,Colima,5000000,19000,Febrero,2,19000,0,19000
+Aguacatera,Terrenos,Colima,5000000,19000,Marzo,3,19000,0,19000
+Aguacatera,Terrenos,Colima,5000000,19000,Abril,4,19000,0,19000
+Aguacatera,Terrenos,Colima,5000000,19000,Mayo,5,19000,0,19000
+Aguacatera,Terrenos,Colima,5000000,19000,Junio,6,19000,0,19000
+Aguacatera,Terrenos,Colima,5000000,19000,Julio,7,19000,0,19000
+Aguacatera,Terrenos,Colima,5000000,19000,Agosto,8,19000,0,19000
+Aguacatera,Terrenos,Colima,5000000,19000,Septiembre,9,19000,0,19000
+Aguacatera,Terrenos,Colima,5000000,19000,Octubre,10,19000,0,19000
+Ceibas,Departamento,Manzanillo,2750000,16500,Enero,1,16500,2700,13800
+Ceibas,Departamento,Manzanillo,2750000,16500,Febrero,2,16500,1500,15000
+Ceibas,Departamento,Manzanillo,2750000,16500,Marzo,3,16500,1500,15000
+Ceibas,Departamento,Manzanillo,2750000,16500,Abril,4,16500,1500,15000
+Ceibas,Departamento,Manzanillo,2750000,16500,Mayo,5,16500,1500,15000
+Ceibas,Departamento,Manzanillo,2750000,16500,Junio,6,16500,1500,15000
+Ceibas,Departamento,Manzanillo,2750000,16500,Julio,7,16500,1500,15000
+Ceibas,Departamento,Manzanillo,2750000,16500,Agosto,8,16500,1500,15000
+Ceibas,Departamento,Manzanillo,2750000,16500,Septiembre,9,16500,1500,15000
+Ceibas,Departamento,Manzanillo,2750000,16500,Octubre,10,16500,1500,15000
+Versa 1,Vehículos,Colima,125000,0,Enero,1,0,1500,-1500
+Versa 1,Vehículos,Colima,125000,0,Febrero,2,0,18000,-18000
+Versa 1,Vehículos,Colima,125000,0,Marzo,3,0,1500,-1500
+Versa 1,Vehículos,Colima,125000,0,Abril,4,0,1501,-1501
+Versa 1,Vehículos,Colima,125000,0,Mayo,5,0,1501,-1501
+Versa 1,Vehículos,Colima,125000,0,Junio,6,0,1502,-1502
+Versa 1,Vehículos,Colima,125000,0,Julio,7,0,1503,-1503
+Versa 1,Vehículos,Colima,125000,0,Agosto,8,0,1504,-1504
+Versa 1,Vehículos,Colima,125000,0,Septiembre,9,0,1500,-1500
+Versa 1,Vehículos,Colima,125000,0,Octubre,10,0,1500,-1500
+Versa 2,Vehículos,Colima,125000,0,Enero,1,0,1500,-1500
+Versa 2,Vehículos,Colima,125000,0,Febrero,2,0,1500,-1500
+Versa 2,Vehículos,Colima,125000,0,Marzo,3,0,1500,-1500
+Versa 2,Vehículos,Colima,125000,0,Abril,4,0,1501,-1501
+Versa 2,Vehículos,Colima,125000,0,Mayo,5,0,1501,-1501
+Versa 2,Vehículos,Colima,125000,0,Junio,6,0,1502,-1502
+Versa 2,Vehículos,Colima,125000,0,Julio,7,0,1503,-1503
+Versa 2,Vehículos,Colima,125000,0,Agosto,8,0,1504,-1504
+Versa 2,Vehículos,Colima,125000,0,Septiembre,9,0,1500,-1500
+Versa 2,Vehículos,Colima,125000,0,Octubre,10,0,4550,-4550
