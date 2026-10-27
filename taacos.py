@@ -130,9 +130,9 @@ def load_portfolio_data(clean_url: str = DEFAULT_CLEAN_CLOUD_URL, local_path: st
 st.markdown(
     """
     <style>
-    /* Fondo general sutil */
+    /* Fondo general blanco */
     .stApp {
-        background-color: #f8fafc;
+        background-color: #ffffff;
     }
 
     /* Banner Hero Ejecutivo */
@@ -305,42 +305,42 @@ st.markdown(
         margin-bottom: 0.6rem;
     }
 
-    /* Estilizado de Pestañas (Tabs) con letras en color negro */
+    /* Estilizado de Pestañas (Tabs): fondo blanco y letras negras */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        background-color: #ffffff;
+        background-color: #ffffff !important;
         padding: 6px 10px;
         border-radius: 12px;
-        border: 1px solid #cbd5e1;
+        border: 1px solid #e2e8f0;
     }
     .stTabs [data-baseweb="tab"],
     .stTabs [data-baseweb="tab"] p,
     .stTabs [data-baseweb="tab"] span,
-    .stTabs [data-baseweb="tab"] div {
-        border-radius: 8px;
-        font-weight: 700 !important;
-        color: #000000 !important;
-    }
+    .stTabs [data-baseweb="tab"] div,
     .stTabs [aria-selected="true"],
     .stTabs [aria-selected="true"] p,
     .stTabs [aria-selected="true"] span,
     .stTabs [aria-selected="true"] div {
-        background-color: #eff6ff !important;
+        background-color: #ffffff !important;
         color: #000000 !important;
-        font-weight: 800 !important;
+        font-weight: 700 !important;
     }
 
-    /* Estilizado de Expanders (Acordeones) con letras en color negro */
+    /* Estilizado de Expanders (Acordeones): fondo blanco y letras negras */
+    [data-testid="stExpander"],
     [data-testid="stExpander"] details,
-    [data-testid="stExpander"] summary {
+    [data-testid="stExpander"] summary,
+    [data-testid="stExpander"] summary:hover {
         background-color: #ffffff !important;
         color: #000000 !important;
         border-radius: 10px !important;
-        border: 1px solid #cbd5e1 !important;
+        border: 1px solid #e2e8f0 !important;
     }
     [data-testid="stExpander"] summary p,
     [data-testid="stExpander"] summary span,
+    [data-testid="stExpander"] summary code,
     [data-testid="stExpander"] summary svg {
+        background-color: #ffffff !important;
         color: #000000 !important;
         fill: #000000 !important;
         font-weight: 700 !important;
@@ -351,7 +351,9 @@ st.markdown(
     .main .block-container h3,
     .main .block-container h4,
     .main .block-container p:not(.hero-subtitle),
-    [data-testid="stCaptionContainer"] p {
+    [data-testid="stCaptionContainer"] p,
+    .main code {
+        background-color: transparent !important;
         color: #000000 !important;
     }
     </style>
@@ -1186,7 +1188,7 @@ with tab_recomendaciones:
 # 7. TABLA DE DATOS DETALLADA Y AUDITORÍA
 # ==============================================================================
 
-with st.expander("🔍 Explorar Base de Datos Relacional Depurada (`clean/portafolio_inmuebles_clean.csv`)"):
+with st.expander("🔍 Explorar Base de Datos Relacional Depurada (clean/portafolio_inmuebles_clean.csv)"):
     st.dataframe(
         df_filtered[['propiedad', 'categoria', 'ubicacion', 'mes', 'ingreso_renta', 'gasto_operativo', 'utilidad_neta', 'valor_propiedad']],
         use_container_width=True,
