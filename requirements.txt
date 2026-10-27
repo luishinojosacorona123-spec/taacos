@@ -4,3 +4,5 @@ numpy
 matplotlib
 seaborn
 scipy
+boto3
+python-dotenv
