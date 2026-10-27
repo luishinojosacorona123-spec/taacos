@@ -63,8 +63,8 @@ LOCAL_CLEAN_PATH = os.path.join(os.path.dirname(__file__), 'clean', 'portafolio_
 LOCAL_RAW_PATH = os.path.join(os.path.dirname(__file__), 'raw', 'portafolio_inmuebles_raw.csv')
 
 MESES_ORDEN = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo',
-    'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre'
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ]
 
 PALETA_CATEGORIAS = {
@@ -426,9 +426,9 @@ with st.sidebar:
 
     df_filtered_props = df_filtered_cats[df_filtered_cats['propiedad'].isin(selected_props)]
 
-    with st.expander("📅 3. Periodo Mensual (2026)", expanded=False):
+    with st.expander("📅 3. Periodo Mensual (12 Meses · 2026)", expanded=False):
         meses_disponibles = [m for m in MESES_ORDEN if m in df_filtered_props['mes'].unique()]
-        sel_todos_meses = st.checkbox("Todos los meses (Ene–Oct)", value=True)
+        sel_todos_meses = st.checkbox("Todos los meses (Ene–Dic)", value=True)
         if sel_todos_meses:
             selected_meses = st.multiselect("Meses", meses_disponibles, default=meses_disponibles, label_visibility="collapsed")
         else:
@@ -514,7 +514,7 @@ st.markdown(
         <h1 class="hero-title">Gestión Inteligente de Portafolio Inmobiliario y Rentas</h1>
         <p class="hero-subtitle">
             Control ejecutivo en tiempo real de flujo de caja, mantenimiento operativo (OPEX/CAPEX), análisis espectral de ciclos (FFT)
-            y valuación patrimonial de <b>{num_activos} activos activos</b> (Enero – Octubre 2026).
+            y valuación patrimonial de <b>{num_activos} activos</b> durante los <b>12 meses del año (Enero – Diciembre 2026)</b>.
         </p>
     </div>
     """,
@@ -567,9 +567,9 @@ tab_flujo, tab_operativo, tab_patrimonio, tab_recomendaciones = st.tabs([
 # ------------------------------------------------------------------------------
 with tab_flujo:
     render_chart_header(
-        "Gráfica 1 · Serie de Líneas (Tendencia)",
-        "¿Cómo evoluciona el flujo de caja mensual (ingresos, gastos y utilidad neta) de enero a octubre?",
-        "Desde marzo la utilidad neta se estabiliza sobre $84,000 MXN/mes tras absorber $286,797 MXN de CAPEX en enero y febrero.",
+        "Gráfica 1 · Serie de Líneas (Tendencia Anual 12 Meses)",
+        "¿Cómo evoluciona el flujo de caja mensual (ingresos, gastos y utilidad neta) de enero a diciembre?",
+        "Desde marzo hasta diciembre la utilidad neta se estabiliza sobre $84,000 MXN/mes tras absorber $286,797 MXN de CAPEX en enero y febrero.",
     )
 
     df_mes = (

@@ -101,13 +101,14 @@ $$\text{Pregunta de Negocio} \longrightarrow \text{Pregunta Analítica} \longrig
 
 ## 5. Inventario de Datos (Analítica Unidad 1.1: Conjuntos y Tipos de Datos)
 
-### 5.1 Ficha del Conjunto de Datos Real
+### 5.1 Ficha del Conjunto de Datos Real (12 Meses Completos: Enero a Diciembre 2026)
 * **Fuente:** Archivo real de control operativo y patrimonial del cliente aliado (`portafolio_inmuebles.csv` / `raw/portafolio_inmuebles_raw.csv`).
-* **Estructura en Bruto (`raw/`):** Matriz multifuncional exportada de Excel de **79 filas × 23 columnas** (`Unnamed: 0` a `Unnamed: 22`, $1,817$ celdas totales) dividida en 3 bloques:
+* **Periodo cubierto:** **12 meses completos** (Enero a Diciembre de 2026, ciclo anual completo de 365 días).
+* **Estructura en Bruto (`raw/`):** Matriz multifuncional exportada de Excel de **86 filas × 23 columnas** (`Unnamed: 0` a `Unnamed: 22`, $1,978$ celdas auditadas) dividida en 3 bloques:
   1. *Catálogo de Activos y Avalúos (filas 3 a 18):* 11 activos agrupados en Casas (Colima), Casas (Villa de Álvarez), Terrenos, Departamento (Manzanillo) y Vehículos (Versa).
-  2. *Bitácora de Gastos por Propiedad y Mes (filas 23 a 54):* Conceptos y montos individuales de egresos de Enero a Octubre 2026 a lo largo de 22 columnas pareadas (`Propiedad`, `Gastos`).
-  3. * Estado de Resultados Mensual y Anual (filas 63 a 79):* Resumen de `Mes`, `Ganancias(Rentas)`, `Gastos` y `Ganancia` neta.
-* **Estructura Depurada (`clean/portafolio_inmuebles_clean.csv`):** Tabla relacional normalizada en Tercera Forma Normal (3NF) de **110 registros × 10 columnas** (11 activos × 10 meses de Enero a Octubre 2026).
+  2. *Bitácora de Gastos por Propiedad y Mes (filas 23 a 59):* Conceptos y montos individuales de egresos de **Enero a Diciembre 2026** a lo largo de 22 columnas pareadas (`Propiedad`, `Gastos`).
+  3. *Estado de Resultados Mensual y Anual (filas 68 a 86):* Resumen de los 12 meses (`Enero` a `Diciembre`) con Ingresos Anuales de **$\$1,144,800\text{ MXN}$**, Gastos Totales de **$\$376,569\text{ MXN}$** y Ganancia Neta Anual de **$\$768,231\text{ MXN}$** ($67.1\%$ de margen neto).
+* **Estructura Depurada (`clean/portafolio_inmuebles_clean.csv`):** Tabla relacional normalizada en Tercera Forma Normal (3NF) de **132 registros × 10 columnas** (11 activos × **12 meses** de Enero a Diciembre 2026) más la serie desagregada diaria de 365 días ($4,015$ puntos diarios activos × día) utilizada para el Análisis Espectral con FFT en el tablero.
 
 ### 5.2 Diccionario de Datos y Clasificación Estadística (Tema 1.1)
 
@@ -138,8 +139,19 @@ El archivo original del cliente contiene los **5 tipos de anomalías reales** qu
 
 ## 6. Arranque Técnico en la Nube (Nube Temas 1.1.4 y 1.2)
 
-### 6.1 Elección del Proveedor: Amazon Web Services (AWS)
-Seleccionamos **AWS** como proveedor único para toda la ruta E0 $\rightarrow$ E5 porque nos permite desplegar la arquitectura completa dentro de la **Capa Gratuita (*AWS Free Tier*) con presupuesto de $\$0.00\text{ MXN}$**:
+### 6.1 Comparativa de Proveedores (Tema 1.2) y Elección de Amazon Web Services (AWS)
+
+Evaluamos los tres proveedores líderes de nube pública para determinar cuál ofrece la mejor cobertura de servicios administrados dentro de la **Capa Gratuita ($\$0.00\text{ MXN}$)**:
+
+| Criterio Técnico / Financiero (Tema 1.2) | Amazon Web Services (AWS) *(Elegido)* | Microsoft Azure | Google Cloud Platform (GCP) |
+| :--- | :--- | :--- | :--- |
+| **Almacenamiento Data Lake (`raw/` y `clean/`)** | **Amazon S3:** $5\text{ GB}$ Standard gratis ($20\text{k}$ GET, $2\text{k}$ PUT/mes). | Azure Blob Storage (Data Lake Gen2): $5\text{ GB}$ LRS por 12 meses. | Cloud Storage: $5\text{ GB}$ Standard (regional US). |
+| **Cola de Mensajes (E2)** | **Amazon SQS:** $1,000,000$ peticiones/mes *Always Free*. | Azure Service Bus: Básico con costo tras agotar crédito. | Cloud Pub/Sub: $10\text{ GB}$ de mensajes/mes gratis. |
+| **Worker Serverless (E3)** | **AWS Lambda:** $1,000,000$ invocaciones/mes *Always Free*. | Azure Functions: $1,000,000$ ejecuciones/mes gratis. | Cloud Run functions: $2,000,000$ invocaciones/mes. |
+| **Máquina Virtual y Base de Datos (E2)** | **EC2 (`t3.micro`) + RDS PostgreSQL (`db.t3.micro`):** $750\text{ h/mes}$ cada uno en Free Tier. | VM `B1s` + Azure DB PostgreSQL (consume créditos rápidos). | Compute Engine `e2-micro` gratis, pero **Cloud SQL no tiene Free Tier**. |
+| **Control FinOps ($0)** | **AWS Budgets:** Plantilla nativa *Zero-Spend Budget* ($\$0.01\text{ USD}$). | Cost Management Alerts. | Cloud Billing Budgets. |
+
+Seleccionamos **AWS** como proveedor único para toda la ruta E0 $\rightarrow$ E5 porque es el único que incluye **tanto la máquina virtual (`EC2`) como la base de datos administrada (`RDS for PostgreSQL`), la cola (`SQS`) y el cómputo serverless (`Lambda`) dentro de la capa gratuita con costo $\$0.00\text{ MXN}$**:
 * **Data Lake (E1-E2):** **Amazon S3** con zonas `raw/portafolio_inmuebles_raw.csv`, `clean/portafolio_inmuebles_clean.csv` y `models/`.
 * **Ingesta y Cómputo (E2-E3):** **Amazon EC2** (`t3.micro`) para el microservicio FastAPI en E2, migrando a contenedores en **AWS App Runner / ECS** en E3.
 * **Desacoplamiento y Serverless (E2-E3):** **Amazon SQS** para la cola de mensajes y **AWS Lambda** para el *worker* de limpieza automática.
