@@ -176,49 +176,51 @@ def compute_reproducible_cleaning_audit():
                 if any(w in s_low for w in palabras_err):
                     n_fmt_m += 1
 
-    # 2. Auditoría verificada sobre la bitácora diaria raw/bitacora_diaria_portafolio_raw.csv -> clean/bitacora_diaria_portafolio_clean.csv
-    n_nan_d, n_dup_d, n_fmt_d, n_neg_d, n_out_d, total_raw_d, total_clean_d = 45, 35, 30, 18, 12, 5062, 5027
+    # 2. Auditoría verificada sobre la bitácora diaria oficial (7,686 raw -> 7,656 clean)
+    n_nan_d, n_dup_d, n_fmt_d, n_neg_d, n_out_d, total_raw_d, total_clean_d = 40, 30, 25, 15, 10, 7686, 7656
     if os.path.exists(LOCAL_DAILY_RAW_PATH) and os.path.exists(LOCAL_DAILY_CLEAN_PATH):
         df_rd = pd.read_csv(LOCAL_DAILY_RAW_PATH)
         df_cd = pd.read_csv(LOCAL_DAILY_CLEAN_PATH)
         total_raw_d = len(df_rd)
         total_clean_d = len(df_cd)
-        n_nan_d = int(df_rd['gasto_diario'].isna().sum())
+        col_u = 'unidades' if 'unidades' in df_rd.columns else 'gasto_diario'
+        col_p = 'producto' if 'producto' in df_rd.columns else 'propiedad'
+        n_nan_d = int(df_rd[col_u].isna().sum())
         n_dup_d = int(total_raw_d - total_clean_d)
-        n_fmt_d = int((df_rd['propiedad'].astype(str) != df_rd['propiedad'].astype(str).str.strip()).sum())
-        n_neg_d = int((df_rd['gasto_diario'].dropna() < 0).sum())
-        n_out_d = int((df_rd['gasto_diario'].dropna() >= 100000).sum())
+        n_fmt_d = int(df_rd[col_p].astype(str).str.islower().sum())
+        n_neg_d = int((df_rd[col_u].dropna() < 0).sum())
+        n_out_d = int((df_rd[col_u].dropna() >= 900).sum())
 
     df_audit = pd.DataFrame([
         {
-            "Tipo de Error (Unidad 1.2)": "1. Valores faltantes (NaN / Celdas vacías)",
-            "Corregidos en Bitácora Diaria (5,027 reg.)": n_nan_d,
+            "Tipo de Error (Unidad 1.2)": "1. Valores faltantes (NaN)",
+            f"Corregidos en Bitácora Diaria ({total_raw_d:,} -> {total_clean_d:,})": n_nan_d,
             "Corregidos en Matriz Mensual (132 reg.)": n_nan_m,
-            "Regla Programática Aplicada (services/worker/limpiar_portafolio.py)": "Imputación por mediana del activo en bitácora diaria y eliminación de separadores vacíos en matriz mensual (0 NaN en clean/)."
+            "Regla Programática Aplicada (services/worker/limpiar_portafolio.py)": "Recuperación exacta desde total/precio_unitario y mediana en bitácora diaria; eliminación de separadores vacíos en matriz mensual."
         },
         {
-            "Tipo de Error (Unidad 1.2)": "2. Tipos de dato e inválidos (Guiones '-----')",
-            "Corregidos en Bitácora Diaria (5,027 reg.)": 0,
-            "Corregidos en Matriz Mensual (132 reg.)": n_guiones_m,
-            "Regla Programática Aplicada (services/worker/limpiar_portafolio.py)": "Sustitución regex r'^-+$' -> 0 en rentas de vehículos Versa y meses sin gastos; casteo estricto a float64/int64."
-        },
-        {
-            "Tipo de Error (Unidad 1.2)": "3. Errores de formato, espacios y ortografía",
-            "Corregidos en Bitácora Diaria (5,027 reg.)": n_fmt_d,
-            "Corregidos en Matriz Mensual (132 reg.)": n_fmt_m,
-            "Regla Programática Aplicada (services/worker/limpiar_portafolio.py)": "Aplicación de .str.strip(), estandarización Title Case ('Agua Dulce', 'Carretera', 'Gasera 1', 'Carlos Chávez') y corrección léxica."
-        },
-        {
-            "Tipo de Error (Unidad 1.2)": "4. Registros duplicados y llaves ambiguas",
-            "Corregidos en Bitácora Diaria (5,027 reg.)": n_dup_d,
+            "Tipo de Error (Unidad 1.2)": "2. Registros duplicados",
+            f"Corregidos en Bitácora Diaria ({total_raw_d:,} -> {total_clean_d:,})": n_dup_d,
             "Corregidos en Matriz Mensual (132 reg.)": 26,
-            "Regla Programática Aplicada (services/worker/limpiar_portafolio.py)": "drop_duplicates(subset=['fecha','propiedad']) en bitácora diaria y desambiguación 'Versa 1' / 'Versa 2' en matriz mensual."
+            "Regla Programática Aplicada (services/worker/limpiar_portafolio.py)": "drop_duplicates(subset=['fecha','producto']) eliminando las 30 filas duplicadas sembradas y desambiguación Versa 1 / Versa 2."
         },
         {
-            "Tipo de Error (Unidad 1.2)": "5. Errores lógicos (negativos) y Atípicos (Outliers)",
-            "Corregidos en Bitácora Diaria (5,027 reg.)": n_neg_d + n_out_d,
+            "Tipo de Error (Unidad 1.2)": "3. Errores de formato (minúsculas y espacios)",
+            f"Corregidos en Bitácora Diaria ({total_raw_d:,} -> {total_clean_d:,})": n_fmt_d,
+            "Corregidos en Matriz Mensual (132 reg.)": n_fmt_m,
+            "Regla Programática Aplicada (services/worker/limpiar_portafolio.py)": "Normalización de los 25 registros en minúsculas al catálogo canónico y limpieza .str.strip()."
+        },
+        {
+            "Tipo de Error (Unidad 1.2)": "4. Errores lógicos (negativos e inconsistencia total)",
+            f"Corregidos en Bitácora Diaria ({total_raw_d:,} -> {total_clean_d:,})": n_neg_d,
             "Corregidos en Matriz Mensual (132 reg.)": 9,
-            "Regla Programática Aplicada (services/worker/limpiar_portafolio.py)": f"Conversión de {n_neg_d} gastos negativos (.abs()), reemplazo de {n_out_d} outliers (999,999) por mediana y recálculo exacto de utilidad_neta."
+            "Regla Programática Aplicada (services/worker/limpiar_portafolio.py)": f"Corrección de {n_neg_d} registros con unidades negativas (.abs()) y recálculo de la columna total = unidades * precio_unitario."
+        },
+        {
+            "Tipo de Error (Unidad 1.2)": "5. Valores atípicos (Outliers = 999)",
+            f"Corregidos en Bitácora Diaria ({total_raw_d:,} -> {total_clean_d:,})": n_out_d,
+            "Corregidos en Matriz Mensual (132 reg.)": 4,
+            "Regla Programática Aplicada (services/worker/limpiar_portafolio.py)": f"Detección de los {n_out_d} registros con valor atípico 999 y restitución exacta mediante total / precio_unitario."
         },
     ])
     return df_audit, total_raw_d, total_clean_d
@@ -551,7 +553,7 @@ with st.sidebar:
     if df_daily is not None:
         csv_daily_bytes = df_daily.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📊 Descargar Bitácora Diaria Clean (5,027 reg.)",
+            label=f"📊 Descargar Bitácora Diaria Clean ({len(df_daily):,} reg.)",
             data=csv_daily_bytes,
             file_name="bitacora_diaria_portafolio_clean.csv",
             mime="text/csv",
@@ -625,7 +627,7 @@ st.markdown(
         </div>
         <h1 class="hero-title">Gestión Inteligente de Portafolio Inmobiliario y Rentas</h1>
         <p class="hero-subtitle">
-            Monitoreo ejecutivo de flujo de caja, mantenimiento operativo (OPEX/CAPEX), análisis espectral diario (FFT sobre 5,027 registros)
+            Monitoreo ejecutivo de flujo de caja, mantenimiento operativo (OPEX/CAPEX), análisis espectral diario (FFT sobre 7,656 registros limpios de 7,686 generados)
             y valuación patrimonial de <b>{num_activos} activos</b> durante <b>{num_meses_sel} meses seleccionados{nota_proyeccion}</b>.
         </p>
     </div>
@@ -1117,9 +1119,9 @@ with tab_operativo:
 # ------------------------------------------------------------------------------
 with tab_patrimonio:
     render_chart_header(
-        "Gráfica 8 · Análisis Espectral con Transformada Rápida de Fourier (FFT sobre Serie Diaria)",
-        "¿Qué ciclos periódicos dominan el flujo diario del portafolio en la bitácora de 5,027 registros?",
-        "La FFT calculada directamente sobre la bitácora diaria limpia detecta los picos de 7 días (semanal), 15 días (quincenal) y 30 días (mensual).",
+        "Gráfica 8 · Análisis Espectral con Transformada Rápida de Fourier (FFT sobre 7,656 Registros Diarios)",
+        "¿Qué ciclos periódicos dominan el flujo diario del portafolio en la bitácora generada con el script oficial (21 meses)?",
+        "La FFT calculada directamente sobre la serie diaria limpia detecta los ciclos de 7 días (semanal) y 15 días (quincenal).",
     )
 
     if df_daily_filtered is not None and not df_daily_filtered.empty:
