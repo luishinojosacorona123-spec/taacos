@@ -23,7 +23,7 @@ def main():
     bucket_name = os.getenv("AWS_S3_BUCKET", "taacos-datalake-colima-2026").strip()
 
     if not aws_key or not aws_secret or aws_key == "TU_ACCESS_KEY_IAM_AQUI":
-        print("❌ ERROR: Aún no has colocado tus llaves AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY en el archivo .env")
+        print("[ERROR] No se han configurado AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY en el archivo .env")
         sys.exit(1)
 
     session_kwargs = {
@@ -37,7 +37,7 @@ def main():
     s3 = boto3.client("s3", **session_kwargs)
 
     # 1. Crear el Bucket S3 (si no existe)
-    print(f"🚀 Verificando / Creando bucket S3: '{bucket_name}' en la región '{region}'...")
+    print(f"[INFO] Verificando / Creando bucket S3: '{bucket_name}' en la region '{region}'...")
     try:
         if region == "us-east-1":
             s3.create_bucket(Bucket=bucket_name)
@@ -46,13 +46,13 @@ def main():
                 Bucket=bucket_name,
                 CreateBucketConfiguration={"LocationConstraint": region},
             )
-        print(f"✅ Bucket '{bucket_name}' creado exitosamente.")
+        print(f"[SUCCESS] Bucket '{bucket_name}' creado exitosamente.")
     except ClientError as e:
         code = e.response.get("Error", {}).get("Code", "")
         if code in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
-            print(f"ℹ️ El bucket '{bucket_name}' ya existe y está listo.")
+            print(f"[INFO] El bucket '{bucket_name}' ya existe y esta listo.")
         else:
-            print(f"❌ Error al crear el bucket: {e}")
+            print(f"[ERROR] Error al crear el bucket: {e}")
             sys.exit(1)
 
     # 2. Subir archivo a la zona raw/
@@ -60,34 +60,34 @@ def main():
     raw_local = os.path.join(base_dir, "raw", "portafolio_inmuebles_raw.csv")
     clean_local = os.path.join(base_dir, "clean", "portafolio_inmuebles_clean.csv")
 
-    print("📤 Subiendo 'raw/portafolio_inmuebles_raw.csv' a S3 (zona raw/)...")
+    print("[UPLOAD] Subiendo 'raw/portafolio_inmuebles_raw.csv' a S3 (zona raw/)...")
     s3.upload_file(raw_local, bucket_name, "raw/portafolio_inmuebles_raw.csv")
-    print(f"✅ Subido: s3://{bucket_name}/raw/portafolio_inmuebles_raw.csv")
+    print(f"[SUCCESS] Subido: s3://{bucket_name}/raw/portafolio_inmuebles_raw.csv")
 
     # 3. Subir archivo a la zona clean/
-    print("📤 Subiendo 'clean/portafolio_inmuebles_clean.csv' a S3 (zona clean/)...")
+    print("[UPLOAD] Subiendo 'clean/portafolio_inmuebles_clean.csv' a S3 (zona clean/)...")
     s3.upload_file(clean_local, bucket_name, "clean/portafolio_inmuebles_clean.csv")
-    print(f"✅ Subido: s3://{bucket_name}/clean/portafolio_inmuebles_clean.csv")
+    print(f"[SUCCESS] Subido: s3://{bucket_name}/clean/portafolio_inmuebles_clean.csv")
 
-    # 3.1 Subir bitácora diaria (>5,000 registros, 21 meses) a raw/ y clean/
+    # 3.1 Subir bitacora diaria (>5,000 registros, 21 meses) a raw/ y clean/
     raw_daily_local = os.path.join(base_dir, "raw", "bitacora_diaria_portafolio_raw.csv")
     clean_daily_local = os.path.join(base_dir, "clean", "bitacora_diaria_portafolio_clean.csv")
     if os.path.exists(raw_daily_local):
-        print("📤 Subiendo 'raw/bitacora_diaria_portafolio_raw.csv' a S3 (zona raw/)...")
+        print("[UPLOAD] Subiendo 'raw/bitacora_diaria_portafolio_raw.csv' a S3 (zona raw/)...")
         s3.upload_file(raw_daily_local, bucket_name, "raw/bitacora_diaria_portafolio_raw.csv")
-        print(f"✅ Subido: s3://{bucket_name}/raw/bitacora_diaria_portafolio_raw.csv")
+        print(f"[SUCCESS] Subido: s3://{bucket_name}/raw/bitacora_diaria_portafolio_raw.csv")
     if os.path.exists(clean_daily_local):
-        print("📤 Subiendo 'clean/bitacora_diaria_portafolio_clean.csv' a S3 (zona clean/)...")
+        print("[UPLOAD] Subiendo 'clean/bitacora_diaria_portafolio_clean.csv' a S3 (zona clean/)...")
         s3.upload_file(clean_daily_local, bucket_name, "clean/bitacora_diaria_portafolio_clean.csv")
-        print(f"✅ Subido: s3://{bucket_name}/clean/bitacora_diaria_portafolio_clean.csv")
+        print(f"[SUCCESS] Subido: s3://{bucket_name}/clean/bitacora_diaria_portafolio_clean.csv")
 
     # 4. Crear marcador de la zona models/ (para E3)
     s3.put_object(Bucket=bucket_name, Key="models/.keep", Body=b"")
-    print(f"✅ Zona creada: s3://{bucket_name}/models/")
+    print(f"[SUCCESS] Zona creada: s3://{bucket_name}/models/")
 
     # 5. Verificar objetos dentro del bucket
     resp = s3.list_objects_v2(Bucket=bucket_name)
-    print("\n🎉 ¡DATA LAKE EN AWS S3 LISTO! Objetos actuales en el bucket:")
+    print("\n[INFO] Data Lake en AWS S3 listo. Objetos actuales en el bucket:")
     for obj in resp.get("Contents", []):
         print(f"   - s3://{bucket_name}/{obj['Key']} ({obj['Size']} bytes)")
 

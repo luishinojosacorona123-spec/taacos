@@ -58,15 +58,15 @@ El sistema procesa y valida de forma automatizada (mediante [`services/worker/li
 
 Todos los KPIs se recalculan en tiempo real al interactuar con los filtros de categoría, propiedad y periodo en la barra lateral:
 
-1. **💵 Ingresos del Periodo:**
+1. **Ingresos del Periodo:**
    * **$\$1,144,800\text{ MXN}$** en el ejercicio anual completo (12 meses) / **$\$954,000\text{ MXN}$** en los 10 meses observados (Enero–Octubre).
    * **Ticket / Renta promedio:** **$\$10,600\text{ MXN/mes}$** por activo arrendado.
-2. **📈 Utilidad Neta Líquida y Variación Semanal / Mensual:**
+2. **Utilidad Neta Líquida y Variación Semanal / Mensual:**
    * **$\$768,231\text{ MXN}$** de flujo neto anual (**$67.1\%$ de margen neto**); **$\$596,731\text{ MXN}$** ($62.5\%$) en Enero–Octubre.
    * **Variación contra la semana anterior:** Calculada dinámicamente sobre la bitácora diaria agregada por semana ISO.
-3. **⭐ Activo Estrella:**
+3. **Activo de Mayor Captación:**
    * **Terreno Aguacatera** con **$\$19,000\text{ MXN/mes}$** de captación neta ($19.9\%$ del flujo de rentas del portafolio).
-4. **🏛️ Valor Patrimonial en Gestión:**
+4. **Valor Patrimonial en Gestión:**
    * **$\$24,650,000\text{ MXN}$** en 11 activos bajo administración, absorbiendo un gasto acumulado de $\$376,569\text{ MXN}$ en 12 meses.
 
 ---

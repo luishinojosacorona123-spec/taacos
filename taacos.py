@@ -15,7 +15,7 @@ except ImportError:
 
 st.set_page_config(
     page_title='RentMetrics · Gestión Inteligente de Portafolio y Rentas',
-    page_icon='🏢',
+    
     layout='wide',
     initial_sidebar_state='expanded',
 )
@@ -468,7 +468,7 @@ def render_chart_header(tag: str, question: str, finding: str):
         <div class="chart-header">
             <span class="chart-tag">{tag}</span>
             <div class="chart-question">{question}</div>
-            <div class="chart-finding">✨ Hallazgo: {finding}</div>
+            <div class="chart-finding">Hallazgo: {finding}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -484,7 +484,7 @@ try:
     df_raw, data_source = load_portfolio_data()
     df_daily = load_daily_portfolio_data()
 except Exception as e:
-    st.error(f"❌ Error al cargar los datos del portafolio: {e}")
+    st.error(f"Error al cargar los datos del portafolio: {e}")
     st.stop()
 
 
@@ -493,14 +493,14 @@ except Exception as e:
 # ==============================================================================
 
 with st.sidebar:
-    st.markdown("### 🏢 RentMetrics Panel")
-    st.caption("👥 **Equipo:** Manuel Alexander Hernández Chávez & Luis Antonio Hinojosa Corona")
-    st.caption(f"☁️ **Fuente activa:** {data_source}")
+    st.markdown("### RentMetrics · Panel de Control")
+    st.caption("**Equipo:** Manuel Alexander Hernández Chávez & Luis Antonio Hinojosa Corona")
+    st.caption(f"**Fuente activa:** {data_source}")
     if df_daily is not None:
-        st.caption(f"📊 **Bitácora diaria:** {len(df_daily):,} registros (21 meses)")
+        st.caption(f"**Bitácora diaria:** {len(df_daily):,} registros (21 meses)")
     st.markdown("---")
 
-    with st.expander("📍 1. Categorías de Activo", expanded=True):
+    with st.expander("1. Categorías de Activo", expanded=True):
         todas_categorias = sorted(df_raw['categoria'].unique().tolist())
         sel_todas_cat = st.checkbox("Todas las categorías", value=True)
         if sel_todas_cat:
@@ -509,12 +509,12 @@ with st.sidebar:
             selected_cats = st.multiselect("Categorías", todas_categorias, default=[todas_categorias[0]], label_visibility="collapsed")
 
     if not selected_cats:
-        st.warning("⚠️ Selecciona al menos una categoría.")
+        st.warning("Selecciona al menos una categoría.")
         st.stop()
 
     df_filtered_cats = df_raw[df_raw['categoria'].isin(selected_cats)]
 
-    with st.expander("🏠 2. Propiedades y Vehículos", expanded=False):
+    with st.expander("2. Propiedades y Vehículos", expanded=False):
         todas_props = sorted(df_filtered_cats['propiedad'].unique().tolist())
         sel_todas_props = st.checkbox("Todas las propiedades", value=True)
         if sel_todas_props:
@@ -523,12 +523,12 @@ with st.sidebar:
             selected_props = st.multiselect("Propiedades", todas_props, default=[todas_props[0]], label_visibility="collapsed")
 
     if not selected_props:
-        st.warning("⚠️ Selecciona al menos una propiedad.")
+        st.warning("Selecciona al menos una propiedad.")
         st.stop()
 
     df_filtered_props = df_filtered_cats[df_filtered_cats['propiedad'].isin(selected_props)]
 
-    with st.expander("📅 3. Periodo Mensual (2026)", expanded=False):
+    with st.expander("3. Periodo Mensual (2026)", expanded=False):
         incluir_proyeccion = st.checkbox("Incluir cierre proyectado Nov–Dic 2026 (12 meses)", value=True)
         meses_base = MESES_ORDEN if incluir_proyeccion else MESES_ORDEN[:10]
         meses_disponibles = [m for m in meses_base if m in df_filtered_props['mes'].unique()]
@@ -539,7 +539,7 @@ with st.sidebar:
             selected_meses = st.multiselect("Meses", meses_disponibles, default=meses_disponibles[:3], label_visibility="collapsed")
 
     if not selected_meses:
-        st.warning("⚠️ Selecciona al menos un mes.")
+        st.warning("Selecciona al menos un mes.")
         st.stop()
 
     df_filtered = df_filtered_props[df_filtered_props['mes'].isin(selected_meses)].copy()
@@ -551,10 +551,10 @@ with st.sidebar:
         df_daily_filtered = None
 
     st.markdown("---")
-    st.markdown("### 📥 Exportar Data Lake")
+    st.markdown("### Exportar Datos del Data Lake")
     csv_clean_bytes = df_raw.to_csv(index=False).encode('utf-8')
     st.download_button(
-        label="📄 Descargar Consolidado Clean (CSV)",
+        label="Descargar Consolidado Mensual Limpio (CSV)",
         data=csv_clean_bytes,
         file_name="portafolio_inmuebles_clean.csv",
         mime="text/csv",
@@ -564,7 +564,7 @@ with st.sidebar:
     if df_daily is not None:
         csv_daily_bytes = df_daily.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label=f"📊 Descargar Bitácora Diaria Clean ({len(df_daily):,} reg.)",
+            label=f"Descargar Bitácora Diaria Limpia ({len(df_daily):,} reg.)",
             data=csv_daily_bytes,
             file_name="bitacora_diaria_portafolio_clean.csv",
             mime="text/csv",
@@ -633,9 +633,9 @@ st.markdown(
     f"""
     <div class="hero-banner">
         <div class="hero-top-row">
-            <span class="hero-badge">🏛️ RENTMETRICS · PORTAFOLIO PATRIMONIAL COLIMA</span>
-            <span class="hero-badge">👥 EQUIPO: M. A. HERNÁNDEZ CH. & L. A. HINOJOSA C.</span>
-            <span class="hero-badge">⚡ DATA LAKE: {data_source}</span>
+            <span class="hero-badge">RENTMETRICS · PORTAFOLIO PATRIMONIAL COLIMA</span>
+            <span class="hero-badge">EQUIPO: M. A. HERNÁNDEZ CH. & L. A. HINOJOSA C.</span>
+            <span class="hero-badge">DATA LAKE: {data_source}</span>
         </div>
         <h1 class="hero-title">RentMetrics · Gestión Inteligente de Portafolio y Flujo de Rentas</h1>
         <p class="hero-subtitle">
@@ -652,22 +652,22 @@ st.markdown(
     f"""
     <div class="kpi-grid">
         <div class="kpi-card kpi-blue">
-            <div class="kpi-label">💵 Ingresos del Periodo ({num_meses_sel} meses)</div>
+            <div class="kpi-label">Ingresos del Periodo ({num_meses_sel} meses)</div>
             <div class="kpi-value">${total_ingresos:,.0f} MXN</div>
             <span class="kpi-pill pill-blue">Ticket/Renta prom.: ${ticket_promedio_renta:,.0f}/mes</span>
         </div>
         <div class="kpi-card kpi-green">
-            <div class="kpi-label">📈 Utilidad Neta (Margen {margen_neto:.1f}%)</div>
+            <div class="kpi-label">Utilidad Neta (Margen {margen_neto:.1f}%)</div>
             <div class="kpi-value">${total_utilidad:,.0f} MXN</div>
             <span class="kpi-pill pill-green">{delta_var_texto}</span>
         </div>
         <div class="kpi-card kpi-amber">
-            <div class="kpi-label">⭐ Activo Estrella (Top Captación)</div>
+            <div class="kpi-label">Activo de Mayor Captación</div>
             <div class="kpi-value">{activo_estrella_nombre}</div>
             <span class="kpi-pill pill-amber">${activo_estrella_renta:,.0f} MXN/mes ({pct_estrella:.1f}% de rentas)</span>
         </div>
         <div class="kpi-card kpi-purple">
-            <div class="kpi-label">🏛️ Valor Patrimonial en Gestión</div>
+            <div class="kpi-label">Valor Patrimonial en Gestión</div>
             <div class="kpi-value">${total_patrimonio:,.0f} MXN</div>
             <span class="kpi-pill pill-purple">{num_activos} activos · Gastos: ${total_gastos:,.0f} MXN</span>
         </div>
@@ -682,10 +682,10 @@ st.markdown(
 # ==============================================================================
 
 tab_flujo, tab_operativo, tab_patrimonio, tab_recomendaciones = st.tabs([
-    "📈 1. Flujo de Caja, Ranking y Distribución",
-    "🔧 2. Gastos, Cap Rate y Mapa de Calor",
-    "🌊 3. Análisis Espectral (FFT) y Patrimonio",
-    "💡 4. Recomendaciones al Dueño y Limpieza",
+    "1. Flujo de Caja y Distribución",
+    "2. Operación y Correlaciones",
+    "3. Análisis Espectral (FFT) y Patrimonio",
+    "4. Recomendaciones y Auditoría",
 ])
 
 # ------------------------------------------------------------------------------
@@ -773,7 +773,7 @@ with tab_flujo:
         st.pyplot(fig_hero)
         plt.close(fig_hero)
         render_insight(
-            f"📊 <b>Lectura para el dueño:</b> En la selección actual ({num_meses_sel} meses), los ingresos suman <b>${total_ingresos:,.0f} MXN</b> "
+            f"<b>Lectura ejecutiva:</b> En la selección actual ({num_meses_sel} meses), los ingresos suman <b>${total_ingresos:,.0f} MXN</b> "
             f"y los gastos <b>${total_gastos:,.0f} MXN</b>, dejando una ganancia libre de <b>${total_utilidad:,.0f} MXN ({margen_neto:.1f}%)</b>. "
             "Nota: Noviembre y Diciembre representan el escenario de cierre anual programado."
         )
@@ -823,7 +823,7 @@ with tab_flujo:
             st.pyplot(fig_bar)
             plt.close(fig_bar)
             render_insight(
-                f"🏢 <b>Concentración de ingresos:</b> <i>{activo_estrella_nombre}</i> lidera con <b>${activo_estrella_renta:,.0f} MXN/mes</b> ({pct_estrella:.1f}% del flujo mensual)."
+                f"<b>Concentración de ingresos:</b> <i>{activo_estrella_nombre}</i> lidera con <b>${activo_estrella_renta:,.0f} MXN/mes</b> ({pct_estrella:.1f}% del flujo mensual)."
             )
 
     with col_pie:
@@ -871,7 +871,7 @@ with tab_flujo:
             st.pyplot(fig_pie)
             plt.close(fig_pie)
             render_insight(
-                f"⚖️ <b>Cifras 100% sincronizadas con el encabezado:</b> De <b>${total_ingresos:,.0f} MXN</b> cobrados en los {num_meses_sel} meses seleccionados, "
+                f"<b>Conciliación con el encabezado:</b> De <b>${total_ingresos:,.0f} MXN</b> cobrados en los {num_meses_sel} meses seleccionados, "
                 f"<b>${total_utilidad:,.0f} MXN ({margen_neto:.1f}%)</b> quedan libres para el propietario."
             )
         else:
@@ -948,7 +948,7 @@ with tab_flujo:
             plt.close(fig_hu)
 
     render_insight(
-        f"📐 <b>Sustento Estadístico (Regla de Sturges):</b> A la izquierda se analiza la distribución del <b>ticket de cobro diario</b> ($n = {n_tickets:,}$ cobros positivos, "
+        f"<b>Sustento Estadístico (Regla de Sturges):</b> A la izquierda se analiza la distribución del <b>ticket de cobro diario</b> ($n = {n_tickets:,}$ cobros positivos, "
         f"$k = 1 + \\lceil\\log_2({n_tickets})\\rceil = {k_sturges_t}$ intervalos, media <b>${media_t:,.0f} MXN</b> y mediana <b>${mediana_t:,.0f} MXN</b>). "
         f"A la derecha, sobre los <b>{n_obs_m} registros mensuales seleccionados</b> ($k = {k_sturges_m}$ intervalos), el <b>{pct_superavit_m:.1f}%</b> genera flujo positivo."
     )
@@ -997,7 +997,7 @@ with tab_operativo:
             st.pyplot(fig_box)
             plt.close(fig_box)
             render_insight(
-                "📦 <b>Control de volatilidad:</b> Los valores extremos corresponden a inversiones de capital reales (caseta en <i>Gasera 1</i> por $80,000 MXN y paneles solares en <i>Carlos Chávez</i> por $65,000 MXN)."
+                "<b>Control de volatilidad:</b> Los valores extremos corresponden a inversiones de capital reales (caseta en <i>Gasera 1</i> por $80,000 MXN y paneles solares en <i>Carlos Chávez</i> por $65,000 MXN)."
             )
 
     with col_scatter:
@@ -1060,7 +1060,7 @@ with tab_operativo:
             st.pyplot(fig_scat)
             plt.close(fig_scat)
             render_insight(
-                f"⏱️ <b>Diagnóstico de Cap Rate:</b> Los inmuebles por encima de la recta de regresión (<i>Ceibas</i>, <i>Moscú</i>, <i>Carlos Chávez</i>) "
+                f"<b>Diagnóstico de Cap Rate:</b> Los inmuebles por encima de la recta de regresión (<i>Ceibas</i>, <i>Moscú</i>, <i>Carlos Chávez</i>) "
                 "superan el 5.3% de rendimiento anual, mientras que <i>Gasera 1</i> y <i>Gasera 2</i> muestran potencial de actualización de renta."
             )
 
@@ -1200,7 +1200,7 @@ with tab_patrimonio:
         st.pyplot(fig_fft)
         plt.close(fig_fft)
         render_insight(
-            "🌊 <b>Sustento Metodológico de la FFT:</b> La Transformada Rápida de Fourier (`np.fft.rfft`) se calcula directamente sobre los "
+            "<b>Sustento Metodológico de la FFT:</b> La Transformada Rápida de Fourier (`np.fft.rfft`) se calcula directamente sobre los "
             f"<b>{len(df_daily_filtered):,} registros de la bitácora diaria limpia (`clean/bitacora_diaria_portafolio_clean.csv`)</b> sin inyectar ondas en la vista. "
             "Los picos en ~7, ~15.2 y ~30.4 días reflejan el ritmo semanal de operación vehicular, los pagos quincenales de mantenimiento y el cobro mensual de contratos."
         )
@@ -1268,7 +1268,7 @@ with tab_patrimonio:
 # PESTAÑA 4: 3 RECOMENDACIONES DE NEGOCIO + AUDITORÍA REPRODUCIBLE DE LIMPIEZA
 # ------------------------------------------------------------------------------
 with tab_recomendaciones:
-    st.markdown("### 💡 Tres Decisiones de Negocio Basadas en los Datos Seleccionados")
+    st.markdown("### Recomendaciones Estratégicas Basadas en Datos")
     peor_mes_val = float(df_mes['utilidad_neta'].min()) if not df_mes.empty else 0.0
     reserva_sugerida = max(11500.0, round(abs(peor_mes_val) / 8.0, -2)) if peor_mes_val < 0 else 11500.0
 
@@ -1276,7 +1276,7 @@ with tab_recomendaciones:
         f"""
         <div class="rec-card">
             <div class="rec-title">1. Actualizar la renta de los terrenos Gasera 1 y Gasera 2 tras las mejoras de capital</div>
-            <span class="rec-impact">💰 Impacto estimado: +$9,000 a +$12,500 MXN adicionales por mes</span>
+            <span class="rec-impact">Impacto financiero estimado: +$9,000 a +$12,500 MXN adicionales por mes</span>
             <p style="margin:0; color:#000000; font-size:0.92rem; line-height:1.5;">
                 <b>Respaldo en Gráficas 2 y 6:</b> <i>Gasera 1</i> ($3,000,000 MXN) y <i>Gasera 2</i> ($2,500,000 MXN) recibieron $107,000 y $41,000 MXN en obras
                 (caseta, sanitario y postes), pero cobran $3,000 y $4,500 MXN/mes (Cap Rate bruto de 1.2% y 2.16% anual frente al 5.3%–7.2% habitacional).<br>
@@ -1286,7 +1286,7 @@ with tab_recomendaciones:
 
         <div class="rec-card">
             <div class="rec-title">2. Constituir un Fondo Quincenal de Mantenimiento de ${reserva_sugerida/2:,.0f} MXN por quincena (${reserva_sugerida:,.0f}/mes)</div>
-            <span class="rec-impact">🛡️ Impacto: ${reserva_sugerida*10:,.0f} MXN acumulados en 10 meses estables para eliminar déficits</span>
+            <span class="rec-impact">Impacto proyectado: ${reserva_sugerida*10:,.0f} MXN acumulados en 10 meses estables para eliminar déficits</span>
             <p style="margin:0; color:#000000; font-size:0.92rem; line-height:1.5;">
                 <b>Respaldo en Gráficas 1, 4 y 8 (FFT):</b> La FFT confirma que los pagos de mantenimiento siguen un ciclo quincenal de 15 días, y de marzo a diciembre
                 el portafolio genera más de $84,000 MXN libres al mes.<br>
@@ -1296,7 +1296,7 @@ with tab_recomendaciones:
 
         <div class="rec-card">
             <div class="rec-title">3. Escalonar el CAPEX (máximo 1 obra mayor por trimestre) y mantenimiento preventivo semestral en Versa 1 y 2</div>
-            <span class="rec-impact">🔧 Impacto: Reducción del 35% en reparaciones correctivas urgentes</span>
+            <span class="rec-impact">Impacto operativo: Reducción del 35% en reparaciones correctivas urgentes</span>
             <p style="margin:0; color:#000000; font-size:0.92rem; line-height:1.5;">
                 <b>Respaldo en Gráficas 5 y 7:</b> Ejecutar los paneles solares de <i>Carlos Chávez</i> ($65k) junto con la caseta de <i>Gasera 1</i> ($80k) y la reparación
                 de transmisión del <i>Versa 1</i> ($16,500) concentró ${gasto_ene_feb:,.0f} MXN de gasto en el primer bimestre.<br>
@@ -1309,7 +1309,7 @@ with tab_recomendaciones:
 
     st.markdown("---")
     df_audit, total_raw_d, total_clean_d = compute_reproducible_cleaning_audit()
-    st.markdown("### 🧹 Auditoría Reproducible de Limpieza de Datos (`raw/` $\\rightarrow$ `clean/`)")
+    st.markdown("### Auditoría Programática de Limpieza de Datos (`raw/` $\\rightarrow$ `clean/`)")
     st.caption(
         f"Conteos calculados dinámicamente en código sobre los archivos reales del repositorio: "
         f"Bitácora Diaria (`{total_raw_d:,}` registros en `raw/` -> `{total_clean_d:,}` registros limpios en `clean/`) y "
@@ -1317,7 +1317,7 @@ with tab_recomendaciones:
     )
     st.dataframe(df_audit, use_container_width=True, hide_index=True)
 
-    with st.expander("📋 Ver Validación de Negocio con Cliente Real (Entrevista E0 · RentMetrics)", expanded=False):
+    with st.expander("Validación de Negocio con Cliente Real (Entrevista E0 · RentMetrics)", expanded=False):
         st.markdown(
             """
             * **Proyecto:** RentMetrics · PropTech Colima  
@@ -1351,7 +1351,7 @@ with tab_recomendaciones:
 # 7. TABLA DE DATOS DETALLADA Y AUDITORÍA
 # ==============================================================================
 
-with st.expander("🔍 Explorar Base de Datos Relacional Depurada (clean/portafolio_inmuebles_clean.csv)"):
+with st.expander("Explorar Base de Datos Relacional Depurada (clean/portafolio_inmuebles_clean.csv)"):
     st.dataframe(
         df_filtered[['propiedad', 'categoria', 'ubicacion', 'mes', 'ingreso_renta', 'gasto_operativo', 'utilidad_neta', 'valor_propiedad']],
         use_container_width=True,
