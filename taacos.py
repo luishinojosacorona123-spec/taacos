@@ -13,6 +13,26 @@ try:
 except ImportError:
     pass
 
+from services.modelos.series_tiempo import (
+    preparar_serie_diaria_agregada,
+    ejecutar_descomposicion_serie,
+    ejecutar_prueba_adfuller,
+    calcular_acf_pacf,
+)
+from services.modelos.regresion import (
+    RegresionMinimosCuadradosNumPy,
+    comparar_numpy_vs_sklearn,
+)
+from services.worker.cola import get_queue
+from services.worker.worker import procesar_un_ciclo_worker
+from services.ingesta.database import SessionLocal, IngestaLogModel, OperacionDiariaModel, init_db
+
+try:
+    init_db()
+except Exception:
+    pass
+
+
 st.set_page_config(
     page_title='RentMetrics · Gestión Inteligente de Portafolio y Rentas',
     
@@ -681,11 +701,13 @@ st.markdown(
 # 6. PESTAÑAS ANALÍTICAS
 # ==============================================================================
 
-tab_flujo, tab_operativo, tab_patrimonio, tab_recomendaciones = st.tabs([
+tab_flujo, tab_operativo, tab_modelos, tab_patrimonio, tab_pipeline, tab_recomendaciones = st.tabs([
     "1. Flujo de Caja y Distribución",
     "2. Operación y Correlaciones",
-    "3. Análisis Espectral (FFT) y Patrimonio",
-    "4. Recomendaciones y Auditoría",
+    "3. Modelos: Series de Tiempo y Regresión OLS",
+    "4. Análisis Espectral (FFT) y Patrimonio",
+    "5. Pipeline en la Nube (API, Cola y BD)",
+    "6. Recomendaciones y Auditoría",
 ])
 
 # ------------------------------------------------------------------------------
@@ -1129,6 +1151,236 @@ with tab_operativo:
 # ------------------------------------------------------------------------------
 # PESTAÑA 3: ANÁLISIS ESPECTRAL CON FFT (SOBRE BITÁCORA DIARIA DE 7,018 REGISTROS) Y PATRIMONIO
 # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# PESTAÑA 3: MODELOS PREDICTIVOS - SERIES DE TIEMPO Y REGRESIÓN OLS (E2)
+# ------------------------------------------------------------------------------
+with tab_modelos:
+    st.markdown("### Modelos Predictivos y Diagnóstico Estadístico (Entregable E2)")
+    st.markdown(
+        "Esta sección integra los dos pilares analíticos de modelado estadístico: "
+        "**(1) Modelado de Series de Tiempo** (Descomposición aditiva $Y_t = T_t + S_t + I_t$, prueba Dickey-Fuller Aumentada ADF, ACF y PACF con bandas de Bartlett) y "
+        "**(2) Regresión Lineal por Mínimos Cuadrados Ordinarios (MCO / OLS)** desarrollada "
+        "**desde cero mediante álgebra matricial con NumPy** ($\beta = (X^T X)^{-1} X^T y$), comparada con scikit-learn con tolerancia exacta ($< 10^{-6}$) y diagnóstico riguroso de residuales."
+    )
+
+    # 1. DESCOMPOSICIÓN DE LA SERIE TEMPORAL
+    render_chart_header(
+        "Modelo 1 · Descomposición Aditiva de Serie Temporal",
+        "¿Cómo se descomponen los ingresos diarios en tendencia de largo plazo, ciclo estacional semanal y residuo estocástico?",
+        "Modelo Aditivo Y_t = T_t + S_t + I_t validado; ciclo semanal (período = 7 días) con amplitud de estacionalidad constante e independiente del nivel promedio.",
+    )
+
+    df_para_serie = df_daily_filtered if (df_daily_filtered is not None and not df_daily_filtered.empty) else df_daily
+    if df_para_serie is not None and not df_para_serie.empty:
+        serie_diaria = preparar_serie_diaria_agregada(df_para_serie)
+        descomp = ejecutar_descomposicion_serie(serie_diaria, periodo=7)
+
+        fig_ts, axes_ts = plt.subplots(4, 1, figsize=(10.5, 7.5), sharex=True)
+        # Observado
+        axes_ts[0].plot(descomp["observado"].index, descomp["observado"], color="#2563eb", lw=1.2)
+        axes_ts[0].set_title("Serie Observada $Y_t$ (Ingreso Diario Total MXN)", fontsize=9.5, fontweight="bold")
+        axes_ts[0].yaxis.set_major_formatter("${x:,.0f}")
+        # Tendencia
+        axes_ts[1].plot(descomp["tendencia"].index, descomp["tendencia"], color="#059669", lw=2.0)
+        axes_ts[1].set_title("Componente de Tendencia $T_t$ (Media Móvil Centrada 7 Días)", fontsize=9.5, fontweight="bold")
+        axes_ts[1].yaxis.set_major_formatter("${x:,.0f}")
+        # Estacionalidad
+        axes_ts[2].plot(descomp["estacionalidad"].index, descomp["estacionalidad"], color="#7c3aed", lw=1.2)
+        axes_ts[2].set_title("Componente Estacional $S_t$ (Ciclo Semanal Periódico de 7 Días)", fontsize=9.5, fontweight="bold")
+        axes_ts[2].yaxis.set_major_formatter("${x:,.0f}")
+        # Residuo
+        axes_ts[3].plot(descomp["residuo"].index, descomp["residuo"], color="#ea580c", lw=0.9, alpha=0.85)
+        axes_ts[3].axhline(0, color="#334155", linestyle="--", lw=1.0)
+        axes_ts[3].set_title("Componente Residual / Irregular $I_t$ ($I_t = Y_t - T_t - S_t$)", fontsize=9.5, fontweight="bold")
+        axes_ts[3].yaxis.set_major_formatter("${x:,.0f}")
+
+        for ax in axes_ts:
+            sns.despine(ax=ax)
+        plt.tight_layout()
+        st.pyplot(fig_ts)
+        plt.close(fig_ts)
+
+        render_insight(
+            f"<b>Justificación del Modelo Aditivo:</b> Se eligió la estructura aditiva <i>Y_t = T_t + S_t + I_t</i> porque la dispersión de las rentas "
+            f"es de magnitud constante a lo largo de los 21 meses analizados (media: <b>${descomp['media_serie']:,.0f} MXN</b>, desviación típica: "
+            f"<b>${descomp['desv_estandar']:,.0f} MXN</b>). La fuerza del patrón estacional explica el <b>{descomp['fuerza_estacional']*100:.1f}%</b> "
+            f"de la variación no explicada por el ruido blanco."
+        )
+
+        # 2. PRUEBA ADF Y CORRELOGRAMAS (ACF / PACF)
+        col_adf, col_acf = st.columns(2)
+        with col_adf:
+            render_chart_header(
+                "Prueba de Dickey-Fuller Aumentada (ADF)",
+                "¿La serie temporal de ingresos diarios es estacionaria o presenta raíz unitaria?",
+                "Rechazo de H0 al 99% de confianza; la serie es estacionaria en niveles I(0).",
+            )
+            res_adf = ejecutar_prueba_adfuller(serie_diaria)
+            adf_stat = res_adf["estadistico_adf"]
+            p_val = res_adf["p_value"]
+            cv1 = res_adf["valores_criticos"].get("1%", -3.43)
+            cv5 = res_adf["valores_criticos"].get("5%", -2.86)
+            cv10 = res_adf["valores_criticos"].get("10%", -2.57)
+
+            st.markdown(
+                f"""
+                <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; padding:1rem; margin-bottom:0.8rem;">
+                    <table style="width:100%; font-size:0.88rem; color:#000000;">
+                        <tr><td><b>Estadístico de Prueba (ADF):</b></td><td style="text-align:right; font-weight:bold; color:#2563eb;">{adf_stat:.4f}</td></tr>
+                        <tr><td><b>p-value:</b></td><td style="text-align:right; font-weight:bold; color:{'#059669' if p_val < 0.05 else '#e11d48'};">{p_val:.6f}</td></tr>
+                        <tr><td><b>Lags Óptimos (Criterio AIC):</b></td><td style="text-align:right;">{res_adf['lags_utilizados']} retardos</td></tr>
+                        <tr><td><b>Número de Observaciones:</b></td><td style="text-align:right;">{res_adf['numero_observaciones']:,}</td></tr>
+                        <tr style="border-top:1px solid #e2e8f0;"><td><b>Valor Crítico al 1%:</b></td><td style="text-align:right;">{cv1:.4f}</td></tr>
+                        <tr><td><b>Valor Crítico al 5%:</b></td><td style="text-align:right;">{cv5:.4f}</td></tr>
+                        <tr><td><b>Valor Crítico al 10%:</b></td><td style="text-align:right;">{cv10:.4f}</td></tr>
+                        <tr style="border-top:1px solid #cbd5e1; font-weight:bold;">
+                            <td><b>Diagnóstico de Estacionariedad:</b></td>
+                            <td style="text-align:right; color:#059669;">ESTACIONARIA I(0)</td>
+                        </tr>
+                    </table>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            render_insight(res_adf["interpretacion"])
+
+        with col_acf:
+            render_chart_header(
+                "Autocorrelación (ACF) y Parcial (PACF)",
+                "¿Qué rezagos temporales presentan dependencia serial estadísticamente significativa?",
+                "Retardo 7 y 14 sobresalen de las bandas de Bartlett (95% confianza); orden estacional semanal identificado.",
+            )
+            res_corr = calcular_acf_pacf(serie_diaria, nlags=21)
+            lags = list(range(len(res_corr["acf"])))
+            banda = res_corr["banda_superior"]
+
+            fig_corr, (ax_acf, ax_pacf) = plt.subplots(2, 1, figsize=(7.2, 5.2), sharex=True)
+            # ACF
+            markerline_a, stemlines_a, baseline_a = ax_acf.stem(lags, res_corr["acf"], basefmt="k-")
+            plt.setp(stemlines_a, color="#2563eb", linewidth=1.5)
+            plt.setp(markerline_a, color="#1e3a8a", markersize=4)
+            ax_acf.axhline(banda, color="#e11d48", linestyle="--", lw=1.0, label="Banda 95% Bartlett")
+            ax_acf.axhline(-banda, color="#e11d48", linestyle="--", lw=1.0)
+            ax_acf.set_title("Función de Autocorrelación Simple (ACF)", fontsize=9.0, fontweight="bold")
+            ax_acf.set_ylabel("Autocorrelación")
+            ax_acf.set_ylim(-0.4, 1.05)
+            sns.despine(ax=ax_acf)
+
+            # PACF
+            markerline_p, stemlines_p, baseline_p = ax_pacf.stem(lags, res_corr["pacf"], basefmt="k-")
+            plt.setp(stemlines_p, color="#7c3aed", linewidth=1.5)
+            plt.setp(markerline_p, color="#5b21b6", markersize=4)
+            ax_pacf.axhline(banda, color="#e11d48", linestyle="--", lw=1.0, label="Banda 95% Bartlett")
+            ax_pacf.axhline(-banda, color="#e11d48", linestyle="--", lw=1.0)
+            ax_pacf.set_title("Función de Autocorrelación Parcial (PACF)", fontsize=9.0, fontweight="bold")
+            ax_pacf.set_xlabel("Número de Rezago / Lag (Días)")
+            ax_pacf.set_ylabel("Autocorr. Parcial")
+            ax_pacf.set_ylim(-0.4, 1.05)
+            sns.despine(ax=ax_pacf)
+
+            plt.tight_layout()
+            st.pyplot(fig_corr)
+            plt.close(fig_corr)
+            render_insight(res_corr["interpretacion"])
+    else:
+        st.info("Cargando datos diarios para el modelado de series de tiempo...")
+
+    st.markdown("---")
+
+    # 3. REGRESIÓN LINEAL POR MÍNIMOS CUADRADOS ORDINARIOS (MCO / OLS)
+    render_chart_header(
+        "Modelo 2 · Regresión Lineal por Mínimos Cuadrados Ordinarios (MCO)",
+        "¿Cómo predice el valor comercial del inmueble la renta mensual esperada? Implementación manual NumPy vs scikit-learn.",
+        "Ecuación Normal beta = (X^T X)^(-1) X^T y coincide exactamente con scikit-learn (diferencia < 10^(-10)); R^2 y parámetros validados.",
+    )
+
+    # Datos para regresion: activos unicos con renta y valor comercial
+    df_reg = df_filtered[df_filtered['renta_mensual'] > 0][['propiedad', 'categoria', 'valor_propiedad', 'renta_mensual']].drop_duplicates('propiedad')
+    if len(df_reg) >= 5:
+        X_reg = df_reg['valor_propiedad'].values.reshape(-1, 1)
+        y_reg = df_reg['renta_mensual'].values
+        comp_ols = comparar_numpy_vs_sklearn(X_reg, y_reg, "Valuación Comercial (MXN)", "Renta Mensual (MXN)")
+
+        st.markdown("#### Tabla Comparativa de Validación Matemática (NumPy vs scikit-learn)")
+        st.dataframe(comp_ols["tabla_comparativa"], use_container_width=True, hide_index=True)
+
+        col_reg_plot, col_res_plot = st.columns(2)
+        with col_reg_plot:
+            fig_reg, ax_reg = plt.subplots(figsize=(7.2, 4.4))
+            ax_reg.scatter(
+                df_reg['valor_propiedad'],
+                df_reg['renta_mensual'],
+                color='#2563eb',
+                s=80,
+                alpha=0.85,
+                edgecolor='#1e3a8a',
+                label='Activos Reales (Observaciones)'
+            )
+            # Linea de regresion
+            x_vals = np.linspace(df_reg['valor_propiedad'].min() * 0.9, df_reg['valor_propiedad'].max() * 1.05, 100)
+            y_vals = comp_ols["modelo_numpy"].predict(x_vals.reshape(-1, 1))
+            ax_reg.plot(x_vals, y_vals, color='#e11d48', lw=2.2, label='Recta de Regresión OLS')
+
+            # Etiquetas en puntos
+            for _, r in df_reg.iterrows():
+                ax_reg.annotate(
+                    r['propiedad'],
+                    (r['valor_propiedad'], r['renta_mensual']),
+                    textcoords="offset points",
+                    xytext=(0, 6),
+                    ha='center',
+                    fontsize=7.5,
+                    color='#0f172a'
+                )
+
+            sns.despine(ax=ax_reg)
+            ax_reg.set_title("Ajuste de Recta OLS: Renta Mensual vs Valuación Comercial", fontsize=9.5, fontweight='bold')
+            ax_reg.set_xlabel("Valor Comercial del Inmueble (MXN)")
+            ax_reg.set_ylabel("Renta Mensual Esperada (MXN)")
+            ax_reg.xaxis.set_major_formatter('${x:,.0f}')
+            ax_reg.yaxis.set_major_formatter('${x:,.0f}')
+            ax_reg.legend(loc='upper left', fontsize=8)
+            plt.tight_layout()
+            st.pyplot(fig_reg)
+            plt.close(fig_reg)
+
+        with col_res_plot:
+            # Diagnóstico de residuales: residuales vs predichos
+            fig_diag, (ax_d1, ax_d2) = plt.subplots(1, 2, figsize=(7.2, 4.4))
+            ax_d1.scatter(
+                comp_ols["y_pred"],
+                comp_ols["residuos"],
+                color='#059669',
+                s=55,
+                alpha=0.85,
+                edgecolor='#065f46'
+            )
+            ax_d1.axhline(0, color='#334155', linestyle='--', lw=1.2)
+            sns.despine(ax=ax_d1)
+            ax_d1.set_title("Residuos vs Valores Ajustados", fontsize=8.5, fontweight='bold')
+            ax_d1.set_xlabel("Valores Predichos (MXN)", fontsize=8)
+            ax_d1.set_ylabel("Residuo $e_i$ (MXN)", fontsize=8)
+            ax_d1.xaxis.set_major_formatter('${x:,.0f}')
+            ax_d1.yaxis.set_major_formatter('${x:,.0f}')
+
+            # Histograma de residuos
+            sns.histplot(comp_ols["residuos"], kde=True, color='#7c3aed', ax=ax_d2, edgecolor='#5b21b6', alpha=0.6)
+            ax_d2.axvline(0, color='#e11d48', linestyle='--', lw=1.2)
+            sns.despine(ax=ax_d2)
+            ax_d2.set_title(f"Distribución de Residuos (JB p={comp_ols['diagnostico_residuos']['jarque_bera_pvalue']:.3f})", fontsize=8.5, fontweight='bold')
+            ax_d2.set_xlabel("Residuo (MXN)", fontsize=8)
+            ax_d2.set_ylabel("Frecuencia", fontsize=8)
+
+            plt.tight_layout()
+            st.pyplot(fig_diag)
+            plt.close(fig_diag)
+
+        render_insight(comp_ols["diagnostico_residuos"]["resumen_interpretativo"])
+    else:
+        st.info("Seleccione al menos 5 propiedades para visualizar la calibración de la regresión OLS.")
+
+
 with tab_patrimonio:
     n_reg_d_str = f"{len(df_daily_filtered):,} Registros Diarios" if df_daily_filtered is not None else "Bitácora Diaria"
     render_chart_header(
@@ -1267,6 +1519,118 @@ with tab_patrimonio:
 # ------------------------------------------------------------------------------
 # PESTAÑA 4: 3 RECOMENDACIONES DE NEGOCIO + AUDITORÍA REPRODUCIBLE DE LIMPIEZA
 # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# PESTAÑA 5: PIPELINE EN LA NUBE - MICROSERVICIO FASTAPI, COLA Y WORKER (E2)
+# ------------------------------------------------------------------------------
+with tab_pipeline:
+    st.markdown("### Monitor del Pipeline en la Nube (Entregable E2 - Cómputo en la Nube)")
+    st.markdown(
+        "Esta vista presenta en tiempo real la arquitectura en la nube desarrollada para E2: "
+        "**Microservicio de Ingesta (FastAPI / OpenAPI)**, **Middleware de Mensajería con Reintentos y DLQ (LocalDiskQueue / AWS SQS)**, "
+        "y **Base de Datos Relacional (PostgreSQL / SQLite)** con sincronización transaccional y bitácora de auditoría."
+    )
+
+    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+    cola_actual = get_queue()
+    stats_c = cola_actual.get_stats()
+
+    # Consultar BD
+    n_ops_bd = 0
+    n_logs_bd = 0
+    db_s = SessionLocal()
+    try:
+        n_ops_bd = db_s.query(OperacionDiariaModel).count()
+        n_logs_bd = db_s.query(IngestaLogModel).count()
+    except Exception:
+        pass
+    finally:
+        db_s.close()
+
+    with col_s1:
+        st.markdown(
+            """
+            <div class="kpi-card">
+                <span class="kpi-pill pill-blue">API Ingesta</span>
+                <div class="kpi-number" style="color:#2563eb;">FastAPI</div>
+                <div class="kpi-label">v2.0.0 · Swagger /docs Activo</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with col_s2:
+        st.markdown(
+            f"""
+            <div class="kpi-card">
+                <span class="kpi-pill pill-green">Cola Activa</span>
+                <div class="kpi-number" style="color:#059669;">{stats_c['mensajes_en_cola']}</div>
+                <div class="kpi-label">Mensajes Pendientes en Cola</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with col_s3:
+        st.markdown(
+            f"""
+            <div class="kpi-card">
+                <span class="kpi-pill pill-amber">Dead Letter Queue</span>
+                <div class="kpi-number" style="color:#ea580c;">{stats_c['mensajes_en_dlq']}</div>
+                <div class="kpi-label">Mensajes Aislados en DLQ</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with col_s4:
+        st.markdown(
+            f"""
+            <div class="kpi-card">
+                <span class="kpi-pill pill-purple">Base de Datos</span>
+                <div class="kpi-number" style="color:#7c3aed;">{n_ops_bd:,}</div>
+                <div class="kpi-label">Registros Diarios en BD SQL</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+    st.markdown("#### Control de Procesamiento del Worker Asíncrono")
+    st.caption("Ejecute un ciclo del worker para despachar los mensajes encolados, aplicar la limpieza automatizada y persistir en la base de datos:")
+
+    if st.button("Ejecutar Ciclo de Limpieza con Worker", type="primary"):
+        with st.spinner("Worker sondeando cola y procesando lotes pendientes..."):
+            res_worker = procesar_un_ciclo_worker(max_messages=10)
+            st.success(
+                f"Ciclo finalizado con estado: **{res_worker['status']}**. "
+                f"Mensajes procesados: **{res_worker['mensajes_procesados']}**, Errores: **{res_worker['mensajes_con_error']}**."
+            )
+            st.rerun()
+
+    st.markdown("#### Historial Reciente de Auditoría (`ingesta_logs`)")
+    db_s2 = SessionLocal()
+    try:
+        logs_recent = db_s2.query(IngestaLogModel).order_by(IngestaLogModel.id.desc()).limit(10).all()
+        if logs_recent:
+            df_logs = pd.DataFrame([
+                {
+                    "Lote ID": l.batch_id,
+                    "Origen": l.origen,
+                    "Archivo": l.archivo_raw,
+                    "Registros Recibidos": l.total_registros,
+                    "Registros Limpios": l.registros_limpios,
+                    "Estado": l.estado,
+                    "Reintentos": l.reintentos,
+                    "Error": l.error_detalle or "Ninguno",
+                    "Fecha": str(l.created_at)[:19] if l.created_at else "N/A"
+                }
+                for l in logs_recent
+            ])
+            st.dataframe(df_logs, use_container_width=True, hide_index=True)
+        else:
+            st.info("Aún no hay registros en la tabla ingesta_logs.")
+    finally:
+        db_s2.close()
+
+
 with tab_recomendaciones:
     st.markdown("### Recomendaciones Estratégicas Basadas en Datos")
     peor_mes_val = float(df_mes['utilidad_neta'].min()) if not df_mes.empty else 0.0

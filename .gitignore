@@ -7,3 +7,8 @@ venv/
 ENV/
 .idea/
 .vscode/
+.pytest_cache/
+data/queue/
+data/*.db
+raw/inbox_*
+clean/inbox_*
