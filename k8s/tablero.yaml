@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rentmetrics-tablero
+  namespace: rentmetrics
+  labels:
+    app: rentmetrics-tablero
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rentmetrics-tablero
+  template:
+    metadata:
+      labels:
+        app: rentmetrics-tablero
+    spec:
+      containers:
+      - name: tablero-ui
+        image: rentmetrics/tablero:v3.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8501
+          name: http
+        envFrom:
+        - configMapRef:
+            name: rentmetrics-config
+        - secretRef:
+            name: rentmetrics-secrets
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1024Mi"
+        livenessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 20
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 15
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rentmetrics-tablero-svc
+  namespace: rentmetrics
+  labels:
+    app: rentmetrics-tablero
+spec:
+  type: LoadBalancer
+  selector:
+    app: rentmetrics-tablero
+  ports:
+  - port: 80
+    targetPort: 8501
+    protocol: TCP
+    name: http

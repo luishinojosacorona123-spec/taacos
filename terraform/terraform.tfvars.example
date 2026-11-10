@@ -1,0 +1,4 @@
+aws_region   = "us-east-1"
+project_name = "rentmetrics"
+environment  = "production"
+bucket_name  = "rentmetrics-datalake-prod-2026"

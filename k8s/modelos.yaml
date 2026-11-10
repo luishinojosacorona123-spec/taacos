@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rentmetrics-modelos
+  namespace: rentmetrics
+  labels:
+    app: rentmetrics-modelos
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rentmetrics-modelos
+  template:
+    metadata:
+      labels:
+        app: rentmetrics-modelos
+    spec:
+      containers:
+      - name: modelos-api
+        image: rentmetrics/modelos:v3.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8001
+          name: http
+        envFrom:
+        - configMapRef:
+            name: rentmetrics-config
+        - secretRef:
+            name: rentmetrics-secrets
+        resources:
+          requests:
+            cpu: "150m"
+            memory: "384Mi"
+          limits:
+            cpu: "800m"
+            memory: "768Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rentmetrics-modelos-svc
+  namespace: rentmetrics
+  labels:
+    app: rentmetrics-modelos
+spec:
+  type: ClusterIP
+  selector:
+    app: rentmetrics-modelos
+  ports:
+  - port: 8001
+    targetPort: 8001
+    protocol: TCP
+    name: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rentmetrics-modelos-hpa
+  namespace: rentmetrics
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rentmetrics-modelos
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

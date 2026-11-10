@@ -1,0 +1,28 @@
+{
+  "nombre_modelo": "SARIMA(1, 1, 1)x(1, 0, 1, 7)",
+  "order": [
+    1,
+    1,
+    1
+  ],
+  "seasonal_order": [
+    1,
+    0,
+    1,
+    7
+  ],
+  "frecuencia": "Diaria (D)",
+  "periodo_estacional": 7,
+  "fecha_inicio_datos": "2025-01-01",
+  "fecha_fin_datos": "2026-09-30",
+  "total_observaciones": 638,
+  "aic": 13599.555138533076,
+  "bic": 13621.767839365417,
+  "metricas_holdout_30_dias": {
+    "RMSE": 17334.07,
+    "MAE": 15682.12,
+    "MAPE_pct": 22.49
+  },
+  "archivo_binario": "models/sarima_model.pkl",
+  "justificacion_parametros": "El orden p=1 se sustenta en el corte de la funcion PACF tras los primeros retardos. El parametro d=1 estabiliza la tendencia de mediano plazo en el flujo diario. El componente q=1 modela la memoria de choques de corto plazo (MA). El bloque estacional P=1, D=0, Q=1 con periodo s=7 captura rigurosamente el ciclo semanal recurrente identificado mediante ACF y analisis espectral de Fourier."
+}

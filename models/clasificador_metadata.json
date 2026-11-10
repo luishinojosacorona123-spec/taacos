@@ -1,0 +1,123 @@
+{
+  "modelo_seleccionado": "Gaussian Naive Bayes",
+  "criterio_seleccion": "Maximizacion de Recall (deteccion preventiva de impago) con penalizacion minima de precision",
+  "columnas_entrada": [
+    "dias_mora",
+    "ratio_gasto_canon",
+    "variacion_flujo_pct",
+    "fraccionamiento_pagos",
+    "meses_contrato",
+    "canon_mensual"
+  ],
+  "total_muestras": 250,
+  "distribucion_clases": {
+    "Puntuales (0)": 175,
+    "En_Riesgo (1)": 75
+  },
+  "tabla_comparativa": [
+    {
+      "Modelo": "Gaussian Naive Bayes",
+      "Exactitud (Accuracy)": 0.9841,
+      "Precision": 0.95,
+      "Recall (Exhaustividad)": 1.0,
+      "F1-Score": 0.9744,
+      "ROC-AUC": 1.0,
+      "CV F1 (5-Folds)": 0.9753
+    },
+    {
+      "Modelo": "K-Nearest Neighbors (KNN)",
+      "Exactitud (Accuracy)": 0.9841,
+      "Precision": 0.95,
+      "Recall (Exhaustividad)": 1.0,
+      "F1-Score": 0.9744,
+      "ROC-AUC": 1.0,
+      "CV F1 (5-Folds)": 0.9443
+    },
+    {
+      "Modelo": "Support Vector Machine (SVM)",
+      "Exactitud (Accuracy)": 0.9841,
+      "Precision": 0.95,
+      "Recall (Exhaustividad)": 1.0,
+      "F1-Score": 0.9744,
+      "ROC-AUC": 1.0,
+      "CV F1 (5-Folds)": 0.9538
+    },
+    {
+      "Modelo": "Random Forest Classifier",
+      "Exactitud (Accuracy)": 1.0,
+      "Precision": 1.0,
+      "Recall (Exhaustividad)": 1.0,
+      "F1-Score": 1.0,
+      "ROC-AUC": 1.0,
+      "CV F1 (5-Folds)": 0.9818
+    }
+  ],
+  "matrices_confusion": {
+    "Gaussian Naive Bayes": {
+      "matrix": [
+        [
+          43,
+          1
+        ],
+        [
+          0,
+          19
+        ]
+      ],
+      "TN": 43,
+      "FP": 1,
+      "FN": 0,
+      "TP": 19
+    },
+    "K-Nearest Neighbors (KNN)": {
+      "matrix": [
+        [
+          43,
+          1
+        ],
+        [
+          0,
+          19
+        ]
+      ],
+      "TN": 43,
+      "FP": 1,
+      "FN": 0,
+      "TP": 19
+    },
+    "Support Vector Machine (SVM)": {
+      "matrix": [
+        [
+          43,
+          1
+        ],
+        [
+          0,
+          19
+        ]
+      ],
+      "TN": 43,
+      "FP": 1,
+      "FN": 0,
+      "TP": 19
+    },
+    "Random Forest Classifier": {
+      "matrix": [
+        [
+          44,
+          0
+        ],
+        [
+          0,
+          19
+        ]
+      ],
+      "TN": 44,
+      "FP": 0,
+      "FN": 0,
+      "TP": 19
+    }
+  },
+  "archivo_binario": "models/clasificador_riesgo.pkl",
+  "justificacion_metrica_recall": "En el negocio de rentas patrimoniales, el costo de un Falso Negativo (clasificar a un moroso como puntual) representa de 3 a 5 meses de renta incobrable y gastos legales de juicio de desalojo ($45,000+ MXN). Por el contrario, un Falso Positivo (revisar preventivamente a un inquilino puntual) solo insume 2 minutos de llamada o mensaje de cortesía. Por consiguiente, el RECALL en la clase Morosa es la métrica rectora del sistema."
+}

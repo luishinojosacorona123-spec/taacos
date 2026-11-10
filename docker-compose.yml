@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # 1. Microservicio de Ingesta (FastAPI / OpenAPI)
+  ingesta:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ingesta
+    container_name: rentmetrics-ingesta
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - DATABASE_URL=sqlite:///data/taacos.db
+      - ENVIRONMENT=production
+    volumes:
+      - ./data:/app/data
+      - ./raw:/app/raw
+      - ./clean:/app/clean
+    networks:
+      - rentmetrics-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # 2. Microservicio de Modelos Predictivos (SARIMA y Clasificador de Riesgo)
+  modelos:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.modelos
+    container_name: rentmetrics-modelos
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - ENVIRONMENT=production
+    volumes:
+      - ./models:/app/models
+      - ./clean:/app/clean
+    networks:
+      - rentmetrics-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # 3. Tablero Ejecutivo v3 (Streamlit)
+  tablero:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.tablero
+    container_name: rentmetrics-tablero
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - MODELOS_API_URL=http://modelos:8001
+      - INGESTA_API_URL=http://ingesta:8000
+      - ENVIRONMENT=production
+    volumes:
+      - ./clean:/app/clean
+      - ./models:/app/models
+    networks:
+      - rentmetrics-net
+    depends_on:
+      - ingesta
+      - modelos
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # 4. Worker de Procesamiento Asincrono
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: rentmetrics-worker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=sqlite:///data/taacos.db
+      - ENVIRONMENT=production
+    volumes:
+      - ./data:/app/data
+      - ./raw:/app/raw
+      - ./clean:/app/clean
+    networks:
+      - rentmetrics-net
+    depends_on:
+      - ingesta
+
+networks:
+  rentmetrics-net:
+    driver: bridge
+    name: rentmetrics-network

@@ -1,0 +1,37 @@
+# ==============================================================================
+# Multi-stage Dockerfile para Worker Asincrono de Limpieza y Procesamiento
+# ==============================================================================
+
+# STAGE 1: Builder
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# STAGE 2: Runtime Final
+FROM python:3.11-slim AS runner
+
+WORKDIR /app
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -s /bin/bash -m appuser
+
+COPY --from=builder /root/.local /home/appuser/.local
+
+COPY services ./services
+COPY clean ./clean
+COPY raw ./raw
+
+ENV PATH=/home/appuser/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+USER appuser
+
+CMD ["python", "services/worker/worker.py"]
