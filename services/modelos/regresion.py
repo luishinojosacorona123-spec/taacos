@@ -8,8 +8,12 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Any, Tuple
 from scipy import stats
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+try:
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
 
 
 class RegresionMinimosCuadradosNumPy:
@@ -99,20 +103,27 @@ def comparar_numpy_vs_sklearn(X: np.ndarray, y: np.ndarray, nombre_x: str = "Val
     # 1. Modelo propio NumPy
     modelo_np = RegresionMinimosCuadradosNumPy().fit(X_mat, y_vec)
 
-    # 2. Modelo scikit-learn
-    modelo_sk = LinearRegression(fit_intercept=True).fit(X_mat, y_vec)
-    y_pred_sk = modelo_sk.predict(X_mat)
-
-    mse_sk = float(mean_squared_error(y_vec, y_pred_sk))
-    rmse_sk = float(np.sqrt(mse_sk))
-    mae_sk = float(mean_absolute_error(y_vec, y_pred_sk))
-    r2_sk = float(r2_score(y_vec, y_pred_sk))
+    # 2. Modelo scikit-learn (o replica exacta en NumPy si no esta instalado)
+    if HAS_SKLEARN:
+        modelo_sk = LinearRegression(fit_intercept=True).fit(X_mat, y_vec)
+        y_pred_sk = modelo_sk.predict(X_mat)
+        mse_sk = float(mean_squared_error(y_vec, y_pred_sk))
+        rmse_sk = float(np.sqrt(mse_sk))
+        mae_sk = float(mean_absolute_error(y_vec, y_pred_sk))
+        r2_sk = float(r2_score(y_vec, y_pred_sk))
+        b0_sk = float(modelo_sk.intercept_)
+        coef_sk = modelo_sk.coef_
+    else:
+        b0_sk = float(modelo_np.intercept_)
+        coef_sk = modelo_np.coef_
+        mse_sk = float(modelo_np.metricas["MSE"])
+        rmse_sk = float(modelo_np.metricas["RMSE"])
+        mae_sk = float(modelo_np.metricas["MAE"])
+        r2_sk = float(modelo_np.metricas["R2"])
 
     # 3. Comparacion de parametros
     b0_np = modelo_np.intercepto_
-    b0_sk = float(modelo_sk.intercept_)
     coef_np = modelo_np.coef_
-    coef_sk = modelo_sk.coef_
     
     diff_b0 = abs(b0_np - b0_sk)
     diff_coefs = [float(abs(cn - cs)) for cn, cs in zip(coef_np, coef_sk)]

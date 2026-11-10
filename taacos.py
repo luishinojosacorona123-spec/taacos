@@ -1,11 +1,16 @@
 import io
 import os
 import re
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import streamlit as st
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
 try:
     from dotenv import load_dotenv
@@ -13,27 +18,52 @@ try:
 except ImportError:
     pass
 
-from services.modelos.series_tiempo import (
-    preparar_serie_diaria_agregada,
-    ejecutar_descomposicion_serie,
-    ejecutar_prueba_adfuller,
-    calcular_acf_pacf,
-)
-from services.modelos.arima_forecaster import generar_pronostico, entrenar_y_guardar_sarima
-from services.modelos.clasificador_riesgo import clasificar_arrendatario, entrenar_y_comparar_clasificadores
-from services.modelos.regresion import (
-    RegresionMinimosCuadradosNumPy,
-    comparar_numpy_vs_sklearn,
-)
-from services.worker.cola import get_queue
-from services.worker.worker import procesar_un_ciclo_worker
-from services.ingesta.database import SessionLocal, IngestaLogModel, OperacionDiariaModel, init_db
+try:
+    from services.modelos.series_tiempo import (
+        preparar_serie_diaria_agregada,
+        ejecutar_descomposicion_serie,
+        ejecutar_prueba_adfuller,
+        calcular_acf_pacf,
+    )
+except Exception:
+    preparar_serie_diaria_agregada = None
+    ejecutar_descomposicion_serie = None
+    ejecutar_prueba_adfuller = None
+    calcular_acf_pacf = None
 
 try:
+    from services.modelos.arima_forecaster import generar_pronostico, entrenar_y_guardar_sarima
+except Exception:
+    generar_pronostico = None
+    entrenar_y_guardar_sarima = None
+
+try:
+    from services.modelos.clasificador_riesgo import clasificar_arrendatario, entrenar_y_comparar_clasificadores
+except Exception:
+    clasificar_arrendatario = None
+    entrenar_y_comparar_clasificadores = None
+
+try:
+    from services.modelos.regresion import (
+        RegresionMinimosCuadradosNumPy,
+        comparar_numpy_vs_sklearn,
+    )
+except Exception:
+    RegresionMinimosCuadradosNumPy = None
+    comparar_numpy_vs_sklearn = None
+
+try:
+    from services.worker.cola import get_queue
+    from services.worker.worker import procesar_un_ciclo_worker
+    from services.ingesta.database import SessionLocal, IngestaLogModel, OperacionDiariaModel, init_db
     init_db()
 except Exception:
-    pass
-
+    get_queue = None
+    procesar_un_ciclo_worker = None
+    SessionLocal = None
+    IngestaLogModel = None
+    OperacionDiariaModel = None
+    init_db = None
 
 st.set_page_config(
     page_title='RentMetrics · Gestión Inteligente de Portafolio y Rentas',

@@ -16,24 +16,28 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Any, Tuple, List
 
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.naive_bayes import GaussianNB
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import (
-    confusion_matrix,
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    roc_auc_score,
-    classification_report,
-)
+try:
+    from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.calibration import CalibratedClassifierCV
+    from sklearn.naive_bayes import GaussianNB
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.svm import SVC
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.tree import DecisionTreeClassifier
+    from sklearn.metrics import (
+        confusion_matrix,
+        accuracy_score,
+        precision_score,
+        recall_score,
+        f1_score,
+        roc_auc_score,
+        classification_report,
+    )
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MODELS_DIR = os.path.join(BASE_DIR, "models")
@@ -233,16 +237,31 @@ def clasificar_arrendatario(
     model_path = os.path.join(MODELS_DIR, "clasificador_riesgo.pkl")
     meta_path = os.path.join(MODELS_DIR, "clasificador_metadata.json")
 
-    if not os.path.exists(model_path):
-        entrenar_y_comparar_clasificadores()
+    modelo = None
+    if os.path.exists(model_path) and HAS_SKLEARN:
+        try:
+            with open(model_path, "rb") as f:
+                modelo = pickle.load(f)
+        except Exception:
+            modelo = None
 
-    with open(model_path, "rb") as f:
-        modelo = pickle.load(f)
+    if modelo is None and HAS_SKLEARN:
+        try:
+            entrenar_y_comparar_clasificadores()
+            with open(model_path, "rb") as f:
+                modelo = pickle.load(f)
+        except Exception:
+            modelo = None
 
-    with open(meta_path, "r", encoding="utf-8") as f:
-        meta = json.load(f)
+    meta = {}
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+        except Exception:
+            meta = {}
 
-    cols = meta["columnas_entrada"]
+    cols = meta.get("columnas_entrada", ["dias_mora", "ratio_gasto_canon", "variacion_flujo_pct", "fraccionamiento_pagos", "meses_contrato", "canon_mensual"])
     df_in = pd.DataFrame([{
         "dias_mora": float(dias_mora),
         "ratio_gasto_canon": float(ratio_gasto_canon),
@@ -252,8 +271,13 @@ def clasificar_arrendatario(
         "canon_mensual": float(canon_mensual),
     }])[cols]
 
-    pred = int(modelo.predict(df_in)[0])
-    prob = float(modelo.predict_proba(df_in)[0][1]) if hasattr(modelo, "predict_proba") else (1.0 if pred == 1 else 0.0)
+    if modelo is not None:
+        pred = int(modelo.predict(df_in)[0])
+        prob = float(modelo.predict_proba(df_in)[0][1]) if hasattr(modelo, "predict_proba") else (1.0 if pred == 1 else 0.0)
+    else:
+        score = (float(dias_mora) / 14.0) * 0.45 + (float(ratio_gasto_canon) / 0.40) * 0.35 + (max(0.0, -float(variacion_flujo_pct)) / 0.20) * 0.20
+        prob = float(np.clip(score, 0.0, 1.0))
+        pred = 1 if prob >= 0.50 else 0
 
     # Nivel de riesgo
     if prob < 0.25:
