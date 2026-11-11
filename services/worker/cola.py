@@ -9,13 +9,21 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-QUEUE_DIR = os.path.join(BASE_DIR, "data", "queue")
-INBOX_DIR = os.path.join(QUEUE_DIR, "inbox")
-DLQ_DIR = os.path.join(QUEUE_DIR, "dlq")
-PROCESSING_DIR = os.path.join(QUEUE_DIR, "processing")
-
-for d in [INBOX_DIR, DLQ_DIR, PROCESSING_DIR]:
-    os.makedirs(d, exist_ok=True)
+try:
+    QUEUE_DIR = os.path.join(BASE_DIR, "data", "queue")
+    INBOX_DIR = os.path.join(QUEUE_DIR, "inbox")
+    DLQ_DIR = os.path.join(QUEUE_DIR, "dlq")
+    PROCESSING_DIR = os.path.join(QUEUE_DIR, "processing")
+    for d in [INBOX_DIR, DLQ_DIR, PROCESSING_DIR]:
+        os.makedirs(d, exist_ok=True)
+except Exception:
+    import tempfile
+    QUEUE_DIR = os.path.join(tempfile.gettempdir(), "taacos_queue")
+    INBOX_DIR = os.path.join(QUEUE_DIR, "inbox")
+    DLQ_DIR = os.path.join(QUEUE_DIR, "dlq")
+    PROCESSING_DIR = os.path.join(QUEUE_DIR, "processing")
+    for d in [INBOX_DIR, DLQ_DIR, PROCESSING_DIR]:
+        os.makedirs(d, exist_ok=True)
 
 
 class MessageQueue(ABC):

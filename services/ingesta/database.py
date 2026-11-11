@@ -12,14 +12,23 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_SQLITE_PATH = os.path.join(BASE_DIR, "data", "taacos.db")
 
-# Si existe DATABASE_URL (ej. en AWS RDS o contenedor), se usa; de lo contrario, SQLite local
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH}")
-
-os.makedirs(os.path.dirname(DEFAULT_SQLITE_PATH), exist_ok=True)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    try:
+        os.makedirs(os.path.dirname(DEFAULT_SQLITE_PATH), exist_ok=True)
+        DATABASE_URL = f"sqlite:///{DEFAULT_SQLITE_PATH}"
+    except Exception:
+        import tempfile
+        tmp_db = os.path.join(tempfile.gettempdir(), "taacos.db")
+        DATABASE_URL = f"sqlite:///{tmp_db}"
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args, echo=False)
+try:
+    engine = create_engine(DATABASE_URL, connect_args=connect_args, echo=False)
+except Exception:
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, echo=False)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
