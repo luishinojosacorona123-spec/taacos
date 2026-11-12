@@ -2,7 +2,7 @@
 # ==============================================================================
 # GUIA COMPLETA DE DESPLIEGUE EN AWS ECS FARGATE + ECR + LOAD BALANCER
 # Proyecto: RentMetrics · Computo en la Nube (IAD-2408) · TecNM
-# Alumno: Luis Antonio Hinojosa Corona
+# Alumnos / Equipo: Luis Antonio Hinojosa Corona, Manuel Alexander Hernández Chávez, Armando Román (@armandoromang)
 # ==============================================================================
 # NOTA IMPORTANTE: Ejecuta estos comandos en GIT BASH (no CMD ni PowerShell).
 # Asegurate de tener Docker Desktop abierto y en estado "Engine running".

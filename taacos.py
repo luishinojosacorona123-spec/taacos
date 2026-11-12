@@ -594,7 +594,7 @@ except Exception as e:
 
 with st.sidebar:
     st.markdown("### RentMetrics · Panel de Control")
-    st.caption("**Equipo:** Manuel Alexander Hernández Chávez & Luis Antonio Hinojosa Corona")
+    st.caption("**Equipo:** Manuel Alexander Hernández Chávez, Luis Antonio Hinojosa Corona & Armando Román (@armandoromang)")
     st.caption(f"**Fuente activa:** {data_source}")
     if df_daily is not None:
         st.caption(f"**Bitácora diaria:** {len(df_daily):,} registros (21 meses)")
@@ -2008,7 +2008,7 @@ with tab_recomendaciones:
         st.markdown(
             """
             * **Proyecto:** RentMetrics · PropTech Colima  
-            * **Integrantes:** Manuel Alexander Hernández Chávez (Data Lead) & Luis Antonio Hinojosa Corona (Cloud Lead)  
+            * **Integrantes:** Manuel Alexander Hernández Chávez (Data Lead), Luis Antonio Hinojosa Corona (Cloud Lead) & Armando Román (@armandoromang) (DevOps & Software Engineer)  
             * **Entrevistado:** Administrador y titular de portafolio patrimonial en Colima, Villa de Álvarez y Manzanillo  
             * **Fecha y Duración:** 14 de octubre de 2026 · 18 minutos  
 

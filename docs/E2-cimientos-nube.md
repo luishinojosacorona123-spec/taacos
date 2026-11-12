@@ -6,6 +6,7 @@
 **Equipo de Trabajo:**
 * **Manuel Alexander Hernández Chávez** · *Data Lead*
 * **Luis Antonio Hinojosa Corona** · *Cloud Lead*
+* **Armando Román** (`@armandoromang`) · *DevOps & Software Engineer*
 
 ---
 

@@ -5,6 +5,7 @@
 **Integrantes del Equipo:**
 * **Hernández Chávez Manuel Alexander** — *Data Lead*
 * **Hinojosa Corona Luis Antonio** (`@luishinojosacorona123-spec`) — *Cloud Lead*
+* **Armando Román** (`@armandoromang`) — *DevOps & Software Engineer*
 
 **URL Pública del Tablero (Streamlit Cloud):** [`https://luishinojosacorona123-spec-taacos-taacos-nuiqdn.streamlit.app`](https://luishinojosacorona123-spec-taacos-taacos-nuiqdn.streamlit.app)  
 **Archivo ejecutable del Tablero:** [`taacos.py`](../taacos.py)  

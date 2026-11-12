@@ -10,6 +10,7 @@
 **Integrantes del Equipo:**
 * **Hernández Chávez Manuel Alexander** — *Data Lead*
 * **Hinojosa Corona Luis Antonio** (`@luishinojosacorona123-spec`) — *Cloud Lead*
+* **Armando Román** (`@armandoromang`) — *DevOps & Software Engineer*
 
 ---
 
@@ -160,4 +161,4 @@ Evaluamos los tres proveedores líderes de nube para garantizar cobertura técni
 
 En apego a los lineamientos éticos del Proyecto Integrador:
 * **Herramientas empleadas:** Asistentes de IA generativa (Antigravity / Gemini) para asistencia en la estructuración de documentos markdown, normalización de esquemas y prototipado visual en Streamlit.
-* **Dominio conceptual del equipo:** Ambos integrantes (**Manuel Alexander Hernández Chávez** y **Luis Antonio Hinojosa Corona**) dominan y son capaces de defender en el Demo Day la lógica del negocio, las respuestas reales de la entrevista, la formulación matemática de la cadena de preguntas y la arquitectura en la nube desplegada.
+* **Dominio conceptual del equipo:** Los integrantes del equipo (**Manuel Alexander Hernández Chávez**, **Luis Antonio Hinojosa Corona** y **Armando Román**) dominan y son capaces de defender en el Demo Day la lógica del negocio, las respuestas reales de la entrevista, la formulación matemática de la cadena de preguntas y la arquitectura en la nube desplegada.

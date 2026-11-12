@@ -17,6 +17,7 @@
 
 * **Manuel Alexander Hernández Chávez** — *Data Lead*
 * **Luis Antonio Hinojosa Corona** (`@luishinojosacorona123-spec`) — *Cloud Lead*
+* **Armando Román** (`@armandoromang`) — *DevOps & Software Engineer*
 
 ---
 
