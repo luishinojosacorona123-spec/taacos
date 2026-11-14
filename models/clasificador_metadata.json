@@ -1,5 +1,5 @@
 {
-  "modelo_seleccionado": "Gaussian Naive Bayes",
+  "modelo_seleccionado": "Random Forest Classifier",
   "criterio_seleccion": "Maximizacion de Recall (deteccion preventiva de impago) con penalizacion minima de precision",
   "columnas_entrada": [
     "dias_mora",

@@ -306,6 +306,10 @@ def clasificar_arrendatario(
     }
 
 
+# Alias de conveniencia para integracion
+clasificar_nuevo_arrendatario = clasificar_arrendatario
+
+
 if __name__ == "__main__":
     print("Entrenando y comparando clasificadores para E3...")
     res = entrenar_y_comparar_clasificadores()

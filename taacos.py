@@ -1308,7 +1308,7 @@ with tab_modelos:
         "Esta sección integra los dos pilares analíticos de modelado estadístico: "
         "**(1) Modelado de Series de Tiempo** (Descomposición aditiva $Y_t = T_t + S_t + I_t$, prueba Dickey-Fuller Aumentada ADF, ACF y PACF con bandas de Bartlett) y "
         "**(2) Regresión Lineal por Mínimos Cuadrados Ordinarios (MCO / OLS)** desarrollada "
-        "**desde cero mediante álgebra matricial con NumPy** ($\beta = (X^T X)^{-1} X^T y$), comparada con scikit-learn con tolerancia exacta ($< 10^{-6}$) y diagnóstico riguroso de residuales."
+        r"**desde cero mediante álgebra matricial con NumPy** ($\beta = (X^T X)^{-1} X^T y$), comparada con scikit-learn con tolerancia exacta ($< 10^{-6}$) y diagnóstico riguroso de residuales."
     )
 
     # 1. DESCOMPOSICIÓN DE LA SERIE TEMPORAL
