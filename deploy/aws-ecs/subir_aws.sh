@@ -40,14 +40,24 @@ echo "=================================================="
 echo " 2. Configurando Docker y liberando espacio..."
 echo "=================================================="
 mkdir -p ~/.docker-aws
-echo '{"auths":{}, "credsStore": ""}' > ~/.docker-aws/config.json
 export DOCKER_CONFIG="$HOME/.docker-aws"
 
 echo "Liberando cache antigua de Docker para garantizar espacio libre..."
 docker builder prune -f >/dev/null 2>&1 || true
 
-echo "Autenticando Docker con Amazon ECR..."
-aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$REGION.amazonaws.com
+echo "Autenticando Docker con Amazon ECR (inyeccion directa de credenciales)..."
+AUTH_PASS=$(aws ecr get-login-password --region $REGION)
+AUTH_B64=$(echo -n "AWS:$AUTH_PASS" | base64 | tr -d '\n')
+cat <<EOF > ~/.docker-aws/config.json
+{
+  "auths": {
+    "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com": {
+      "auth": "$AUTH_B64"
+    }
+  }
+}
+EOF
+echo "Credenciales ECR configuradas con exito."
 
 echo ""
 echo "=================================================="

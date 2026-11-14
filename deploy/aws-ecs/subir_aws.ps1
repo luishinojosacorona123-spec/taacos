@@ -41,15 +41,27 @@ $dockerAwsDir = "$env:USERPROFILE\.docker-aws"
 if (!(Test-Path $dockerAwsDir)) {
     New-Item -ItemType Directory -Path $dockerAwsDir -Force | Out-Null
 }
-'{"auths":{}, "credsStore": ""}' | Out-File -FilePath "$dockerAwsDir\config.json" -Encoding ascii
 $env:DOCKER_CONFIG = $dockerAwsDir
 
 Write-Host "Liberando cache antigua de Docker..." -ForegroundColor Gray
 try { docker builder prune -f | Out-Null } catch {}
 
-Write-Host "Autenticando Docker con Amazon ECR..." -ForegroundColor Cyan
+Write-Host "Autenticando Docker con Amazon ECR (inyeccion directa de credenciales)..." -ForegroundColor Cyan
 $pass = (aws ecr get-login-password --region $REGION).Trim()
-$pass | docker login --username AWS --password-stdin "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com"
+$authBytes = [System.Text.Encoding]::ASCII.GetBytes("AWS:$pass")
+$authB64 = [Convert]::ToBase64String($authBytes)
+
+$dockerConfigJson = @"
+{
+  "auths": {
+    "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com": {
+      "auth": "$authB64"
+    }
+  }
+}
+"@
+[System.IO.File]::WriteAllText("$dockerAwsDir\config.json", $dockerConfigJson, [System.Text.Encoding]::ASCII)
+Write-Host "Credenciales ECR configuradas con exito." -ForegroundColor Green
 
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Cyan
