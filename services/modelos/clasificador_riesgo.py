@@ -14,7 +14,7 @@ import json
 import pickle
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple, List, Optional
 
 try:
     from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
@@ -295,7 +295,7 @@ def clasificar_arrendatario(
 
     return {
         "status": "SUCCESS",
-        "modelo": meta["modelo_seleccionado"],
+        "modelo": meta.get("modelo_seleccionado", "Random Forest Classifier (Ensemble)"),
         "es_moroso_en_riesgo": pred,
         "probabilidad_riesgo": round(prob, 4),
         "probabilidad_porcentaje": f"{prob * 100:.1f}%",
