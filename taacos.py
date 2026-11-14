@@ -948,7 +948,7 @@ with tab_flujo:
         ax_hero.yaxis.set_major_formatter('${x:,.0f}')
         ax_hero.legend(loc='upper right', frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1', fontsize=8.2)
         plt.tight_layout()
-        render_fig_inline(fig_hero)plt.close(fig_hero)
+        render_fig_inline(fig_hero)
         render_insight(
             f"<b>Lectura ejecutiva:</b> En la selección actual ({num_meses_sel} meses), los ingresos suman <b>${total_ingresos:,.0f} MXN</b> "
             f"y los gastos <b>${total_gastos:,.0f} MXN</b>, dejando una ganancia libre de <b>${total_utilidad:,.0f} MXN ({margen_neto:.1f}%)</b>. "
@@ -997,7 +997,7 @@ with tab_flujo:
             ax_bar.xaxis.set_major_formatter('${x:,.0f}')
             ax_bar.set_xlim(0, max_r * 1.24)
             plt.tight_layout()
-            render_fig_inline(fig_bar)plt.close(fig_bar)
+            render_fig_inline(fig_bar)
             render_insight(
                 f"<b>Concentración de ingresos:</b> <i>{activo_estrella_nombre}</i> lidera con <b>${activo_estrella_renta:,.0f} MXN/mes</b> ({pct_estrella:.1f}% del flujo mensual)."
             )
@@ -1044,7 +1044,7 @@ with tab_flujo:
                 fontsize=8.5,
             )
             plt.tight_layout()
-            render_fig_inline(fig_pie)plt.close(fig_pie)
+            render_fig_inline(fig_pie)
             render_insight(
                 f"<b>Conciliación con el encabezado:</b> De <b>${total_ingresos:,.0f} MXN</b> cobrados en los {num_meses_sel} meses seleccionados, "
                 f"<b>${total_utilidad:,.0f} MXN ({margen_neto:.1f}%)</b> quedan libres para el propietario."
@@ -1092,7 +1092,7 @@ with tab_flujo:
             ax_ht.xaxis.set_major_formatter('${x:,.0f}')
             ax_ht.legend(loc='upper right', fontsize=8)
             plt.tight_layout()
-            render_fig_inline(fig_ht)plt.close(fig_ht)
+            render_fig_inline(fig_ht)
 
     with col_h2:
         if n_obs_m > 1:
@@ -1118,7 +1118,7 @@ with tab_flujo:
             ax_hu.xaxis.set_major_formatter('${x:,.0f}')
             ax_hu.legend(loc='upper left', fontsize=8)
             plt.tight_layout()
-            render_fig_inline(fig_hu)plt.close(fig_hu)
+            render_fig_inline(fig_hu)
 
     render_insight(
         f"<b>Sustento Estadístico (Regla de Sturges):</b> A la izquierda se analiza la distribución del <b>ticket de cobro diario</b> ($n = {n_tickets:,}$ cobros positivos, "
@@ -1167,7 +1167,7 @@ with tab_operativo:
             ax_box.set_ylabel("")
             ax_box.xaxis.set_major_formatter('${x:,.0f}')
             plt.tight_layout()
-            render_fig_inline(fig_box)plt.close(fig_box)
+            render_fig_inline(fig_box)
             render_insight(
                 "<b>Control de volatilidad:</b> Los valores extremos corresponden a inversiones de capital reales (caseta en <i>Gasera 1</i> por $80,000 MXN y paneles solares en <i>Carlos Chávez</i> por $65,000 MXN)."
             )
@@ -1229,7 +1229,7 @@ with tab_operativo:
             ax_scat.yaxis.set_major_formatter('${x:,.0f}')
             ax_scat.legend(loc='upper left', frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1', fontsize=8)
             plt.tight_layout()
-            render_fig_inline(fig_scat)plt.close(fig_scat)
+            render_fig_inline(fig_scat)
             render_insight(
                 f"<b>Diagnóstico de Cap Rate:</b> Los inmuebles por encima de la recta de regresión (<i>Ceibas</i>, <i>Moscú</i>, <i>Carlos Chávez</i>) "
                 "superan el 5.3% de rendimiento anual, mientras que <i>Gasera 1</i> y <i>Gasera 2</i> muestran potencial de actualización de renta."
@@ -1265,7 +1265,7 @@ with tab_operativo:
         )
         ax_hm1.set_title("Matriz de Correlación de Pearson (r)", fontsize=10, fontweight='bold', pad=10)
         plt.tight_layout()
-        render_fig_inline(fig_hm1)plt.close(fig_hm1)
+        render_fig_inline(fig_hm1)
 
     with col_hm2:
         tabla_cruzada = df_filtered.pivot_table(
@@ -1292,7 +1292,7 @@ with tab_operativo:
         ax_hm2.set_xlabel("")
         ax_hm2.set_ylabel("")
         plt.tight_layout()
-        render_fig_inline(fig_hm2)plt.close(fig_hm2)
+        render_fig_inline(fig_hm2)
 
 
 # ------------------------------------------------------------------------------
@@ -1798,7 +1798,7 @@ with tab_patrimonio:
         ax_spec.set_ylabel("Magnitud Espectral (MXN)")
         ax_spec.set_xlim(4, 42)
         plt.tight_layout()
-        render_fig_inline(fig_fft)plt.close(fig_fft)
+        render_fig_inline(fig_fft)
         render_insight(
             "<b>Sustento Metodológico de la FFT:</b> La Transformada Rápida de Fourier (`np.fft.rfft`) se calcula directamente sobre los "
             f"<b>{len(df_daily_filtered):,} registros de la bitácora diaria limpia (`clean/bitacora_diaria_portafolio_clean.csv`)</b> sin inyectar ondas en la vista. "
@@ -1860,7 +1860,7 @@ with tab_patrimonio:
         )
         ax_dona.axis('equal')
         plt.tight_layout()
-        render_fig_inline(fig_dona)plt.close(fig_dona)
+        render_fig_inline(fig_dona)
 
 
 # ------------------------------------------------------------------------------
