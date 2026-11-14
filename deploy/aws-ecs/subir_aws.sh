@@ -37,11 +37,14 @@ echo "Repositorio ECR: $REPO"
 
 echo ""
 echo "=================================================="
-echo " 2. Configurando Docker para ECR (Bypass Wincred)..."
+echo " 2. Configurando Docker y liberando espacio..."
 echo "=================================================="
 mkdir -p ~/.docker-aws
 echo '{"auths":{}}' > ~/.docker-aws/config.json
 export DOCKER_CONFIG="$HOME/.docker-aws"
+
+echo "Liberando cache antigua de Docker para garantizar espacio libre..."
+docker builder prune -f >/dev/null 2>&1 || true
 
 echo "Autenticando Docker con Amazon ECR..."
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$REGION.amazonaws.com

@@ -35,7 +35,7 @@ Write-Host "Repositorio ECR: $REPO" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host " 2. Configurando Docker para ECR (Bypass Wincred)..." -ForegroundColor Cyan
+Write-Host " 2. Configurando Docker y liberando espacio..." -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 $dockerAwsDir = "$env:USERPROFILE\.docker-aws"
 if (!(Test-Path $dockerAwsDir)) {
@@ -43,6 +43,9 @@ if (!(Test-Path $dockerAwsDir)) {
 }
 '{"auths":{}}' | Out-File -FilePath "$dockerAwsDir\config.json" -Encoding ascii
 $env:DOCKER_CONFIG = $dockerAwsDir
+
+Write-Host "Liberando cache antigua de Docker..." -ForegroundColor Gray
+try { docker builder prune -f | Out-Null } catch {}
 
 Write-Host "Autenticando Docker con Amazon ECR..." -ForegroundColor Cyan
 $pass = (aws ecr get-login-password --region $REGION).Trim()
