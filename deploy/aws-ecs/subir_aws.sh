@@ -40,7 +40,7 @@ echo "=================================================="
 echo " 2. Configurando Docker y liberando espacio..."
 echo "=================================================="
 mkdir -p ~/.docker-aws
-echo '{"auths":{}}' > ~/.docker-aws/config.json
+echo '{"auths":{}, "credsStore": ""}' > ~/.docker-aws/config.json
 export DOCKER_CONFIG="$HOME/.docker-aws"
 
 echo "Liberando cache antigua de Docker para garantizar espacio libre..."

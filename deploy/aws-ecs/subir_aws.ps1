@@ -41,7 +41,7 @@ $dockerAwsDir = "$env:USERPROFILE\.docker-aws"
 if (!(Test-Path $dockerAwsDir)) {
     New-Item -ItemType Directory -Path $dockerAwsDir -Force | Out-Null
 }
-'{"auths":{}}' | Out-File -FilePath "$dockerAwsDir\config.json" -Encoding ascii
+'{"auths":{}, "credsStore": ""}' | Out-File -FilePath "$dockerAwsDir\config.json" -Encoding ascii
 $env:DOCKER_CONFIG = $dockerAwsDir
 
 Write-Host "Liberando cache antigua de Docker..." -ForegroundColor Gray
@@ -94,7 +94,7 @@ $taskDefContent = @"
   "executionRoleArn": "$EXEC_ROLE",
   "containerDefinitions": [{
     "name": "$APP",
-    "image": "$REPO:$TAG",
+    "image": "${REPO}:${TAG}",
     "essential": true,
     "portMappings": [{ "containerPort": $PORT, "protocol": "tcp" }],
     "environment": [
@@ -118,7 +118,7 @@ $taskDefContent = @"
 "@
 
 $taskDefPath = "$SCRIPT_DIR\taskdef_streamlit.json"
-$taskDefContent | Out-File -FilePath $taskDefPath -Encoding utf8
+[System.IO.File]::WriteAllText($taskDefPath, $taskDefContent, [System.Text.Encoding]::ASCII)
 aws ecs register-task-definition --cli-input-json "file://$taskDefPath" --region $REGION | Out-Null
 
 Write-Host "Actualizando servicio en el cluster $APP-cluster..." -ForegroundColor Cyan

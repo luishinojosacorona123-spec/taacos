@@ -784,18 +784,23 @@ st.markdown(
 # ==============================================================================
 
 tab_flujo, tab_operativo, tab_modelos, tab_patrimonio, tab_pipeline, tab_recomendaciones = st.tabs([
-    "1. Flujo de Caja y Distribución",
+    "1. Flujo y Distribución",
     "2. Operación y Correlaciones",
-    "3. Modelos: Series de Tiempo y Regresión OLS",
-    "4. Análisis Espectral (FFT) y Patrimonio",
-    "5. Pipeline en la Nube (API, Cola y BD)",
-    "6. Recomendaciones y Auditoría",
+    "3. Modelos Predictivos (OLS & SARIMA)",
+    "4. FFT y Análisis Espectral",
+    "5. Pipeline Cloud & Ingesta",
+    "6. Estrategia y Auditoría",
 ])
 
 # ------------------------------------------------------------------------------
 # PESTAÑA 1: FLUJO DE CAJA MENSUAL + BARRAS + PASTEL + HISTOGRAMA DE TICKET Y UTILIDAD
 # ------------------------------------------------------------------------------
 with tab_flujo:
+    with st.expander("🔍 Auditoría de Calidad de Datos (E1 — 20 pts): Detección y Corrección de los 5 Tipos de Error", expanded=False):
+        df_audit_tab1, r_cnt_1, c_cnt_1 = compute_reproducible_cleaning_audit()
+        st.caption(f"Verificación programática reproducible de los 5 tipos de error (Bitácora Diaria: `{r_cnt_1:,}` registros en raw/ → `{c_cnt_1:,}` en clean/):")
+        st.dataframe(df_audit_tab1, use_container_width=True, hide_index=True)
+
     df_mes = df_mes_kpi.copy()
     meses_superavit = int((df_mes['utilidad_neta'] > 0).sum()) if not df_mes.empty else 0
     gasto_ene_feb = float(df_mes[df_mes['num_mes'].isin([1, 2])]['gasto_operativo'].sum()) if not df_mes.empty else 0.0
