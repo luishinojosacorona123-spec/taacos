@@ -115,7 +115,8 @@ cat > "$SCRIPT_DIR/taskdef_streamlit.json" <<FIN
 }
 FIN
 
-aws ecs register-task-definition --cli-input-json "file://$SCRIPT_DIR/taskdef_streamlit.json" --region $REGION >/dev/null
+cd "$SCRIPT_DIR"
+aws ecs register-task-definition --cli-input-json file://taskdef_streamlit.json --region $REGION >/dev/null
 
 echo "Actualizando servicio en el cluster $APP-cluster..."
 aws ecs update-service --cluster $APP-cluster --service $APP-svc \

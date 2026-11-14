@@ -1,0 +1,31 @@
+{
+  "family": "rentmetrics-luis",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "runtimePlatform": { "operatingSystemFamily": "LINUX", "cpuArchitecture": "X86_64" },
+  "executionRoleArn": "arn:aws:iam::939762010179:role/rentmetrics-luis-exec-role",
+  "containerDefinitions": [{
+    "name": "rentmetrics-luis",
+    "image": "939762010179.dkr.ecr.us-east-2.amazonaws.com/rentmetrics-luis:v1",
+    "essential": true,
+    "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
+    "environment": [
+      { "name": "PORT", "value": "8080" },
+      { "name": "STREAMLIT_SERVER_PORT", "value": "8080" },
+      { "name": "STREAMLIT_SERVER_ADDRESS", "value": "0.0.0.0" },
+      { "name": "STREAMLIT_SERVER_HEADLESS", "value": "true" },
+      { "name": "STREAMLIT_SERVER_ENABLE_CORS", "value": "false" },
+      { "name": "STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION", "value": "false" }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/rentmetrics-luis",
+        "awslogs-region": "us-east-2",
+        "awslogs-stream-prefix": "app"
+      }
+    }
+  }]
+}
