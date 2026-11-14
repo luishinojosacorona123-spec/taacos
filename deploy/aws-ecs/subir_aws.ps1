@@ -1,10 +1,13 @@
 # ==============================================================================
-# SCRIPT POWERSHELL PARA SUBIR A AWS ECS FARGATE + ECR + LOAD BALANCER
-# Proyecto: RentMetrics · Computo en la Nube (IAD-2408)
+# DESPLIEGUE OFICIAL POWERSHELL: RENTMETRICS STREAMLIT EN AWS ECS FARGATE + ALB
+# Proyecto: RentMetrics · Gestion Inteligente de Arrendamientos
 # Alumno: Luis Antonio Hinojosa Corona
 # ==============================================================================
 
 $ErrorActionPreference = "Stop"
+
+$SCRIPT_DIR = $PSScriptRoot
+$REPO_ROOT = Split-Path (Split-Path $SCRIPT_DIR -Parent) -Parent
 
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host " 1. Verificando sesion de AWS..." -ForegroundColor Cyan
@@ -47,47 +50,101 @@ $pass | docker login --username AWS --password-stdin "$ACCOUNT.dkr.ecr.$REGION.a
 
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host " 3. Construyendo, taggeando y subiendo imagen a ECR..." -ForegroundColor Cyan
+Write-Host " 3. Construyendo imagen de RentMetrics Streamlit..." -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
-Set-Location -Path $PSScriptRoot
-docker build --platform linux/amd64 -t "${APP}:${TAG}" .
+Set-Location -Path $REPO_ROOT
+Write-Host "Directorio de construccion: $(Get-Location)" -ForegroundColor Gray
+docker build --platform linux/amd64 -f "$SCRIPT_DIR\Dockerfile" -t "${APP}:${TAG}" .
 docker tag "${APP}:${TAG}" "${REPO}:${TAG}"
+
 Write-Host "Subiendo imagen a ECR: ${REPO}:${TAG} ..." -ForegroundColor Cyan
 docker push "${REPO}:${TAG}"
 
-Write-Host ""
-Write-Host ">>> CAPTURA 2 LISTA: La imagen se subio exitosamente a ECR <<<" -ForegroundColor Green
+Write-Host ">>> Imagen de RentMetrics subida exitosamente a Amazon ECR <<<" -ForegroundColor Green
 aws ecr list-images --repository-name $APP --region $REGION
 
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host " 4. Actualizando servicio ECS y esperando estabilizacion..." -ForegroundColor Cyan
-Write-Host "==================================================" -ForegroundColor Cyan
-aws ecs update-service --cluster "$APP-cluster" --service "$APP-svc" --force-new-deployment --region $REGION | Out-Null
-
-Write-Host "Esperando a que las 2 tareas de Fargate inicien y queden estables (2 a 4 minutos)..." -ForegroundColor Yellow
-aws ecs wait services-stable --cluster "$APP-cluster" --services "$APP-svc" --region $REGION
-Write-Host ">>> SERVICIO ESTABLE EN AWS ECS <<<" -ForegroundColor Green
-
-Write-Host ""
-Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host " 5. Verificando estado de salud en el Load Balancer..." -ForegroundColor Cyan
+Write-Host " 4. Configurando Health Check de Streamlit en ALB..." -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 $TG_ARN = (aws elbv2 describe-target-groups --names "$APP-tg" --region $REGION --query 'TargetGroups[0].TargetGroupArn' --output text).Trim()
-aws elbv2 describe-target-health --target-group-arn $TG_ARN --region $REGION --query 'TargetHealthDescriptions[*].[Target.Id,TargetHealth.State]' --output table
+aws elbv2 modify-target-group --target-group-arn $TG_ARN `
+  --health-check-path "/_stcore/health" `
+  --matcher "HttpCode=200" `
+  --region $REGION | Out-Null
+Write-Host "Health Check actualizado a /_stcore/health (Matcher: 200)" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host " 6. URL Publica de tu aplicacion..." -ForegroundColor Cyan
+Write-Host " 5. Actualizando Task Definition en ECS (1GB RAM)..." -ForegroundColor Cyan
+Write-Host "==================================================" -ForegroundColor Cyan
+$EXEC_ROLE = (aws iam list-roles --query "Roles[?RoleName=='$APP-exec-role' || RoleName=='ecsTaskExecutionRole' || RoleName=='LabRole'].Arn | [0]" --output text).Trim()
+
+$taskDefContent = @"
+{
+  "family": "$APP",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "runtimePlatform": { "operatingSystemFamily": "LINUX", "cpuArchitecture": "X86_64" },
+  "executionRoleArn": "$EXEC_ROLE",
+  "containerDefinitions": [{
+    "name": "$APP",
+    "image": "$REPO:$TAG",
+    "essential": true,
+    "portMappings": [{ "containerPort": $PORT, "protocol": "tcp" }],
+    "environment": [
+      { "name": "PORT", "value": "$PORT" },
+      { "name": "STREAMLIT_SERVER_PORT", "value": "$PORT" },
+      { "name": "STREAMLIT_SERVER_ADDRESS", "value": "0.0.0.0" },
+      { "name": "STREAMLIT_SERVER_HEADLESS", "value": "true" },
+      { "name": "STREAMLIT_SERVER_ENABLE_CORS", "value": "false" },
+      { "name": "STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION", "value": "false" }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/$APP",
+        "awslogs-region": "$REGION",
+        "awslogs-stream-prefix": "app"
+      }
+    }
+  }]
+}
+"@
+
+$taskDefPath = "$SCRIPT_DIR\taskdef_streamlit.json"
+$taskDefContent | Out-File -FilePath $taskDefPath -Encoding utf8
+aws ecs register-task-definition --cli-input-json "file://$taskDefPath" --region $REGION | Out-Null
+
+Write-Host "Actualizando servicio en el cluster $APP-cluster..." -ForegroundColor Cyan
+aws ecs update-service --cluster "$APP-cluster" --service "$APP-svc" `
+  --task-definition $APP --force-new-deployment --region $REGION | Out-Null
+
+Write-Host "Esperando a que las tareas de Fargate arranquen RentMetrics (2 a 4 minutos)..." -ForegroundColor Yellow
+aws ecs wait services-stable --cluster "$APP-cluster" --services "$APP-svc" --region $REGION
+Write-Host ">>> SERVICIO ESTABLE: RENTMETRICS EN EJECUCION <<<" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "==================================================" -ForegroundColor Cyan
+Write-Host " 6. Verificando estado de salud en el Load Balancer..." -ForegroundColor Cyan
+Write-Host "==================================================" -ForegroundColor Cyan
+aws elbv2 describe-target-health --target-group-arn $TG_ARN --region $REGION `
+  --query 'TargetHealthDescriptions[*].[Target.Id,TargetHealth.State]' --output table
+
+Write-Host ""
+Write-Host "==================================================" -ForegroundColor Cyan
+Write-Host " 7. URL Publica de tu aplicacion en Amazon Web Services..." -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 $ALB_ARN = (aws elbv2 describe-load-balancers --names "$APP-alb" --region $REGION --query 'LoadBalancers[0].LoadBalancerArn' --output text).Trim()
 $DNS_NAME = (aws elbv2 describe-load-balancers --load-balancer-arns $ALB_ARN --region $REGION --query 'LoadBalancers[0].DNSName' --output text).Trim()
 $URL = "http://$DNS_NAME"
 
 Write-Host "==================================================" -ForegroundColor Green
-Write-Host " APLICACION DESPLEGADA EXITOSAMENTE EN AWS" -ForegroundColor Green
-Write-Host " Tu app RentMetrics esta disponible en:" -ForegroundColor Green
+Write-Host " RENTMETRICS DESPLEGADO EXITOSAMENTE EN AWS" -ForegroundColor Green
+Write-Host " Tu aplicacion esta disponible en:" -ForegroundColor Green
 Write-Host " $URL" -ForegroundColor Green
 Write-Host " Endpoint de salud:" -ForegroundColor Green
-Write-Host " $URL/health" -ForegroundColor Green
+Write-Host " $URL/_stcore/health" -ForegroundColor Green
 Write-Host "==================================================" -ForegroundColor Green
