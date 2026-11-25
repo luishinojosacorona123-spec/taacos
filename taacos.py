@@ -11,6 +11,29 @@ import pandas as pd
 import seaborn as sns
 import streamlit as st
 
+# ==============================================================================
+# CONFIGURACIÓN ESTÉTICA GLOBAL DE VISUALIZACIÓN (ALTA LEGIBILIDAD Y MINIMALISMO)
+# ==============================================================================
+plt.rcParams.update({
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Segoe UI", "DejaVu Sans", "Helvetica", "Arial"],
+    "figure.facecolor": "#ffffff",
+    "axes.facecolor": "#ffffff",
+    "axes.edgecolor": "#e2e8f0",
+    "axes.linewidth": 0.8,
+    "grid.color": "#f1f5f9",
+    "grid.linestyle": "-",
+    "grid.linewidth": 0.75,
+    "axes.grid": True,
+    "xtick.color": "#64748b",
+    "ytick.color": "#64748b",
+    "text.color": "#0f172a",
+    "axes.labelcolor": "#475569",
+    "axes.titlesize": 10.0,
+    "axes.labelsize": 8.8,
+    "legend.framealpha": 0.95,
+})
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
@@ -346,6 +369,12 @@ def compute_reproducible_cleaning_audit():
 st.markdown(
     """
     <style>
+    /* Tipografía y suavizado general */
+    html, body, [class*="css"] {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
     /* Fondo general blanco */
     .stApp {
         background-color: #ffffff;
@@ -353,12 +382,14 @@ st.markdown(
 
     /* Banner Hero Ejecutivo */
     .hero-banner {
-        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #0f766e 100%);
+        background: linear-gradient(135deg, #0b1329 0%, #1e293b 50%, #0e7490 100%);
         border-radius: 16px;
-        padding: 1.7rem 2.1rem;
+        padding: 1.8rem 2.2rem;
         color: #ffffff;
         box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.22);
         margin-bottom: 1.4rem;
+        position: relative;
+        overflow: hidden;
     }
     .hero-top-row {
         display: flex;
@@ -369,40 +400,48 @@ st.markdown(
         margin-bottom: 0.55rem;
     }
     .hero-badge {
-        background: rgba(255, 255, 255, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.22);
         color: #e0f2fe;
-        padding: 0.28rem 0.85rem;
+        padding: 0.3rem 0.9rem;
         border-radius: 999px;
-        font-size: 0.77rem;
+        font-size: 0.78rem;
         font-weight: 600;
+        letter-spacing: 0.3px;
     }
     .hero-title {
-        font-size: 2.0rem;
+        font-size: 2.1rem;
         font-weight: 800;
         color: #ffffff !important;
         margin: 0.2rem 0 0.35rem 0;
+        letter-spacing: -0.5px;
     }
     .hero-subtitle {
-        font-size: 0.96rem;
+        font-size: 0.98rem;
         color: #e2e8f0;
         margin: 0;
-        line-height: 1.5;
+        line-height: 1.55;
     }
 
     /* Tarjetas KPI Ejecutivas */
     .kpi-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-        gap: 1.05rem;
+        gap: 1.1rem;
         margin-bottom: 1.4rem;
     }
     .kpi-card {
         background: #ffffff;
         border-radius: 14px;
-        padding: 1.2rem 1.3rem;
-        border: 1px solid #cbd5e1;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+        padding: 1.2rem 1.35rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08);
     }
     .kpi-blue   { border-top: 4px solid #2563eb; }
     .kpi-green  { border-top: 4px solid #059669; }
@@ -410,91 +449,98 @@ st.markdown(
     .kpi-purple { border-top: 4px solid #7c3aed; }
 
     .kpi-label {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.4px;
-        color: #334155;
+        letter-spacing: 0.5px;
+        color: #64748b;
         margin-bottom: 0.35rem;
     }
     .kpi-value {
-        font-size: 1.6rem;
+        font-size: 1.65rem;
         font-weight: 800;
-        color: #000000;
+        color: #0f172a;
         margin-bottom: 0.4rem;
         line-height: 1.15;
+        letter-spacing: -0.5px;
     }
     .kpi-pill {
         display: inline-block;
-        padding: 0.22rem 0.65rem;
+        padding: 0.24rem 0.7rem;
         border-radius: 999px;
-        font-size: 0.75rem;
+        font-size: 0.74rem;
         font-weight: 700;
     }
-    .pill-blue   { background: #eff6ff; color: #1e40af; }
-    .pill-green  { background: #ecfdf5; color: #065f46; }
-    .pill-amber  { background: #fffbeb; color: #92400e; }
-    .pill-purple { background: #f5f3ff; color: #5b21b6; }
+    .pill-blue   { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .pill-green  { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .pill-amber  { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .pill-purple { background: #f5f3ff; color: #5b21b6; border: 1px solid #ddd6fe; }
 
     /* Encabezados de Gráfica (Pregunta + Hallazgo Dinámico) */
     .chart-header {
         background: #ffffff;
-        border: 1px solid #cbd5e1;
-        border-left: 5px solid #2563eb;
-        border-radius: 10px;
-        padding: 0.85rem 1.15rem;
-        margin: 0.6rem 0 0.75rem 0;
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid #2563eb;
+        border-radius: 12px;
+        padding: 0.9rem 1.2rem;
+        margin: 0.7rem 0 0.8rem 0;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
     }
     .chart-tag {
         display: inline-block;
-        background: #dbeafe;
-        color: #1e3a8a;
+        background: #eff6ff;
+        color: #1d4ed8;
         font-size: 0.72rem;
         font-weight: 700;
         text-transform: uppercase;
-        padding: 0.15rem 0.55rem;
-        border-radius: 5px;
-        margin-bottom: 0.28rem;
+        letter-spacing: 0.4px;
+        padding: 0.16rem 0.6rem;
+        border-radius: 6px;
+        margin-bottom: 0.3rem;
+        border: 1px solid #dbeafe;
     }
     .chart-question {
-        font-size: 1.03rem;
+        font-size: 1.02rem;
         font-weight: 700;
-        color: #000000;
-        margin: 0 0 0.22rem 0;
+        color: #0f172a;
+        margin: 0 0 0.25rem 0;
+        line-height: 1.4;
     }
     .chart-finding {
         font-size: 0.88rem;
-        color: #065f46;
-        font-weight: 700;
+        color: #047857;
+        font-weight: 600;
         margin: 0;
+        line-height: 1.4;
     }
 
     /* Caja de Insight Inferior */
     .insight-box {
-        background: #ffffff;
-        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
         border-radius: 10px;
-        padding: 0.75rem 1rem;
+        padding: 0.8rem 1.15rem;
         font-size: 0.86rem;
-        color: #000000;
-        margin-top: 0.35rem;
-        margin-bottom: 1rem;
-        line-height: 1.45;
+        color: #334155;
+        margin-top: 0.4rem;
+        margin-bottom: 1.1rem;
+        line-height: 1.5;
     }
 
     /* Tarjetas de Recomendaciones */
     .rec-card {
         background: #ffffff;
-        border: 1px solid #cbd5e1;
-        border-left: 6px solid #059669;
+        border: 1px solid #e2e8f0;
+        border-left: 5px solid #059669;
         border-radius: 12px;
-        padding: 1.15rem 1.35rem;
-        margin-bottom: 0.95rem;
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1.0rem;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
     }
     .rec-title {
         font-size: 1.05rem;
         font-weight: 800;
-        color: #000000;
+        color: #0f172a;
         margin-bottom: 0.35rem;
     }
     .rec-impact {
@@ -506,50 +552,62 @@ st.markdown(
         padding: 0.2rem 0.65rem;
         border-radius: 999px;
         margin-bottom: 0.55rem;
+        border: 1px solid #a7f3d0;
     }
 
-    /* Pestañas (Tabs): fondo blanco y letras negras */
+    /* Pestañas (Tabs): diseño moderno segmentado */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        background-color: #ffffff !important;
-        padding: 6px 10px;
+        background-color: #f8fafc !important;
+        padding: 6px 8px;
         border-radius: 12px;
-        border: 1px solid #cbd5e1;
+        border: 1px solid #e2e8f0;
     }
-    .stTabs [data-baseweb="tab"],
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        transition: all 0.2s ease !important;
+        background-color: transparent !important;
+        border: none !important;
+    }
     .stTabs [data-baseweb="tab"] p,
     .stTabs [data-baseweb="tab"] span,
-    .stTabs [data-baseweb="tab"] div,
-    .stTabs [aria-selected="true"],
+    .stTabs [data-baseweb="tab"] div {
+        color: #475569 !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #ffffff !important;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08) !important;
+    }
     .stTabs [aria-selected="true"] p,
     .stTabs [aria-selected="true"] span,
     .stTabs [aria-selected="true"] div {
-        background-color: #ffffff !important;
-        color: #000000 !important;
+        color: #1d4ed8 !important;
         font-weight: 700 !important;
     }
 
-    /* Expanders (Acordeones): fondo blanco y letras negras */
+    /* Expanders (Acordeones): fondo blanco limpio */
     [data-testid="stExpander"],
     [data-testid="stExpander"] details,
     [data-testid="stExpander"] summary,
     [data-testid="stExpander"] summary:hover {
         background-color: #ffffff !important;
-        color: #000000 !important;
+        color: #0f172a !important;
         border-radius: 10px !important;
-        border: 1px solid #cbd5e1 !important;
+        border: 1px solid #e2e8f0 !important;
     }
     [data-testid="stExpander"] summary p,
     [data-testid="stExpander"] summary span,
     [data-testid="stExpander"] summary code,
     [data-testid="stExpander"] summary svg {
         background-color: #ffffff !important;
-        color: #000000 !important;
-        fill: #000000 !important;
+        color: #0f172a !important;
+        fill: #0f172a !important;
         font-weight: 700 !important;
     }
 
-    /* Textos generales del área principal en negro */
+    /* Textos generales del área principal */
     .main .block-container h2,
     .main .block-container h3,
     .main .block-container h4,
@@ -557,7 +615,7 @@ st.markdown(
     [data-testid="stCaptionContainer"] p,
     .main code {
         background-color: transparent !important;
-        color: #000000 !important;
+        color: #0f172a !important;
     }
     </style>
     """,
@@ -882,43 +940,41 @@ with tab_flujo:
 
     if not df_mes.empty:
         fig_hero, ax_hero = plt.subplots(figsize=(10.5, 4.0))
+        # Líneas continuas limpias con alta legibilidad ejecutiva
         ax_hero.plot(
             df_mes['mes'],
             df_mes['ingreso_renta'],
             label='Ingresos por Rentas',
-            color='#0284c7',
+            color='#2563eb',
             lw=2.2,
-            linestyle='--',
-            marker='s',
-            markersize=5,
+            solid_capstyle='round',
         )
         ax_hero.plot(
             df_mes['mes'],
             df_mes['gasto_operativo'],
             label='Gastos Operativos y CAPEX',
-            color='#e11d48',
-            lw=2.2,
-            marker='^',
-            markersize=5,
+            color='#f43f5e',
+            lw=2.0,
+            linestyle='--',
+            solid_capstyle='round',
         )
         ax_hero.plot(
             df_mes['mes'],
             df_mes['utilidad_neta'],
             label='Utilidad Neta Líquida',
-            color='#1e3a8a',
-            lw=3.0,
-            marker='o',
-            markersize=6,
+            color='#059669',
+            lw=2.8,
+            solid_capstyle='round',
         )
 
-        ax_hero.axhline(0, color='#64748b', linestyle=':', lw=1.2)
+        ax_hero.axhline(0, color='#94a3b8', linestyle=':', lw=1.0)
         ax_hero.fill_between(
             df_mes['mes'],
             df_mes['utilidad_neta'],
             0,
             where=(df_mes['utilidad_neta'] >= 0),
             color='#10b981',
-            alpha=0.18,
+            alpha=0.12,
             label='Superávit Líquido',
         )
         ax_hero.fill_between(
@@ -927,26 +983,48 @@ with tab_flujo:
             0,
             where=(df_mes['utilidad_neta'] < 0),
             color='#f43f5e',
-            alpha=0.18,
-            label='Déficit por Inversión Mayor (CAPEX)',
+            alpha=0.12,
+            label='Inversión CAPEX Inicial',
         )
 
-        for m, val in zip(df_mes['mes'], df_mes['utilidad_neta']):
+        # Destacar exclusivamente los 2 hitos críticos para eliminar saturación de texto
+        max_idx = df_mes['utilidad_neta'].idxmax()
+        m_max = df_mes.loc[max_idx, 'mes']
+        v_max = df_mes.loc[max_idx, 'utilidad_neta']
+        ax_hero.scatter([m_max], [v_max], color='#059669', s=65, zorder=5)
+        ax_hero.annotate(
+            f"Máx Superávit\n${v_max:,.0f}",
+            (m_max, v_max),
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha='center',
+            fontsize=8.0,
+            fontweight='bold',
+            color='#065f46',
+            bbox=dict(boxstyle="round,pad=0.25", fc="#ecfdf5", ec="#059669", lw=0.8),
+        )
+
+        min_idx = df_mes['utilidad_neta'].idxmin()
+        v_min = df_mes.loc[min_idx, 'utilidad_neta']
+        if v_min < 0:
+            m_min = df_mes.loc[min_idx, 'mes']
+            ax_hero.scatter([m_min], [v_min], color='#f43f5e', s=65, zorder=5)
             ax_hero.annotate(
-                f"${val/1000:,.1f}k",
-                (m, val),
+                f"Absorción CAPEX\n${v_min:,.0f}",
+                (m_min, v_min),
                 textcoords="offset points",
-                xytext=(0, 9 if val >= 0 else -15),
+                xytext=(0, -26),
                 ha='center',
-                fontsize=8,
+                fontsize=8.0,
                 fontweight='bold',
-                color='#065f46' if val >= 0 else '#9f1239',
+                color='#9f1239',
+                bbox=dict(boxstyle="round,pad=0.25", fc="#fff1f2", ec="#f43f5e", lw=0.8),
             )
 
         sns.despine(ax=ax_hero)
-        ax_hero.set_ylabel("Monto Mensual (MXN)")
+        ax_hero.set_ylabel("Monto Mensual (MXN)", fontsize=8.8)
         ax_hero.yaxis.set_major_formatter('${x:,.0f}')
-        ax_hero.legend(loc='upper right', frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1', fontsize=8.2)
+        ax_hero.legend(loc='upper right', frameon=True, facecolor='#ffffff', edgecolor='#e2e8f0', fontsize=8.2)
         plt.tight_layout()
         render_fig_inline(fig_hero)
         render_insight(
@@ -977,8 +1055,8 @@ with tab_flujo:
                 df_rentas['propiedad'],
                 df_rentas['renta_mensual'],
                 color=colores_bar,
-                height=0.62,
-                alpha=0.9,
+                height=0.58,
+                alpha=0.92,
             )
             max_r = df_rentas['renta_mensual'].max()
             for bar in bars:
@@ -988,14 +1066,14 @@ with tab_flujo:
                     bar.get_y() + bar.get_height() / 2,
                     f"${w:,.0f}",
                     va='center',
-                    fontsize=8.5,
+                    fontsize=8.3,
                     fontweight='bold',
-                    color='#000000',
+                    color='#0f172a',
                 )
-            sns.despine(ax=ax_bar)
-            ax_bar.set_xlabel("Renta Mensual Fija (MXN)")
+            sns.despine(ax=ax_bar, left=True)
+            ax_bar.set_xlabel("Renta Mensual Fija (MXN)", fontsize=8.8)
             ax_bar.xaxis.set_major_formatter('${x:,.0f}')
-            ax_bar.set_xlim(0, max_r * 1.24)
+            ax_bar.set_xlim(0, max_r * 1.25)
             plt.tight_layout()
             render_fig_inline(fig_bar)
             render_insight(
@@ -1005,7 +1083,7 @@ with tab_flujo:
     with col_pie:
         pct_gasto = (total_gastos / total_ingresos * 100.0) if total_ingresos > 0 else 0.0
         render_chart_header(
-            "Gráfica 3 · Gráfica Circular (Composición Sincronizada)",
+            "Gráfica 3 · Gráfica de Dona (Composición Sincronizada)",
             f"¿Cómo se dividen los ${total_ingresos:,.0f} MXN de ingresos entre gastos y ganancia libre?",
             f"El {margen_neto:.1f}% (${total_utilidad:,.0f} MXN) es ganancia neta libre y el {pct_gasto:.1f}% (${total_gastos:,.0f} MXN) son gastos.",
         )
@@ -1013,35 +1091,37 @@ with tab_flujo:
         if total_ingresos > 0 and total_utilidad >= 0:
             fig_pie, ax_pie = plt.subplots(figsize=(7.5, 4.4))
             pie_vals = [total_utilidad, total_gastos]
-            pie_labels = ['Ganancia Neta Libre', 'Gastos y Adecuaciones']
-            pie_colors = ['#059669', '#e11d48']
+            pie_labels = ['Ganancia Libre', 'Gastos y Adecuaciones']
+            pie_colors = ['#10b981', '#f43f5e']
 
-            wedges, texts, autotexts = ax_pie.pie(
+            wedges, _ = ax_pie.pie(
                 pie_vals,
                 labels=None,
-                autopct='%1.1f%%',
-                pctdistance=0.58,
-                startangle=135,
+                startangle=90,
                 colors=pie_colors,
-                explode=[0.03, 0.03],
-                textprops={'fontsize': 10.5, 'weight': 'bold', 'color': 'white'},
-                wedgeprops={'edgecolor': 'white', 'linewidth': 2.5},
+                wedgeprops=dict(width=0.38, edgecolor='white', linewidth=2.5),
             )
             ax_pie.axis('equal')
-            labels_legend = [
-                f"{lbl}\n${val:,.0f} MXN ({val/total_ingresos*100:.1f}%)"
+
+            # KPI centralizado en el orificio de la dona
+            ax_pie.text(0, 0.12, "Margen Neto", ha='center', va='center', fontsize=9.2, color='#64748b', fontweight='600')
+            ax_pie.text(0, -0.05, f"{margen_neto:.1f}%", ha='center', va='center', fontsize=19.0, color='#0f172a', fontweight='bold')
+            ax_pie.text(0, -0.21, f"${total_utilidad:,.0f} MXN", ha='center', va='center', fontsize=8.8, color='#059669', fontweight='bold')
+
+            legend_items = [
+                f"{lbl}: ${val:,.0f} ({val/total_ingresos*100:.1f}%)"
                 for lbl, val in zip(pie_labels, pie_vals)
             ]
             ax_pie.legend(
                 wedges,
-                labels_legend,
-                title='Destino del Ingreso Seleccionado',
-                loc='center left',
-                bbox_to_anchor=(0.95, 0.5),
+                legend_items,
+                loc='lower center',
+                bbox_to_anchor=(0.5, -0.12),
+                ncol=2,
                 frameon=True,
                 facecolor='#ffffff',
-                edgecolor='#cbd5e1',
-                fontsize=8.5,
+                edgecolor='#e2e8f0',
+                fontsize=8.3,
             )
             plt.tight_layout()
             render_fig_inline(fig_pie)
@@ -1079,18 +1159,19 @@ with tab_flujo:
                 bins=k_sturges_t,
                 kde=True,
                 color='#059669',
-                edgecolor='#065f46',
-                alpha=0.65,
+                edgecolor='white',
+                linewidth=0.8,
+                alpha=0.6,
                 ax=ax_ht,
             )
-            ax_ht.axvline(media_t, color='#e11d48', linestyle='--', lw=2, label=f'Media: ${media_t:,.0f}')
-            ax_ht.axvline(mediana_t, color='#1e3a8a', linestyle='-', lw=2, label=f'Mediana: ${mediana_t:,.0f}')
+            ax_ht.axvline(media_t, color='#ef4444', linestyle='--', lw=1.8, label=f'Media: ${media_t:,.0f}')
+            ax_ht.axvline(mediana_t, color='#2563eb', linestyle='-', lw=1.8, label=f'Mediana: ${mediana_t:,.0f}')
             sns.despine(ax=ax_ht)
-            ax_ht.set_title(f"Distribución del Ticket de Cobro (n={n_tickets:,}, k={k_sturges_t} bins)", fontsize=9.8, fontweight='bold')
-            ax_ht.set_xlabel("Ticket de Cobro Diario por Activo (MXN)")
-            ax_ht.set_ylabel("Frecuencia de Cobros")
+            ax_ht.set_title(f"Distribución del Ticket Diario (k={k_sturges_t} bins Sturges)", fontsize=9.5, fontweight='bold')
+            ax_ht.set_xlabel("Ticket de Cobro Diario por Activo (MXN)", fontsize=8.8)
+            ax_ht.set_ylabel("Frecuencia", fontsize=8.8)
             ax_ht.xaxis.set_major_formatter('${x:,.0f}')
-            ax_ht.legend(loc='upper right', fontsize=8)
+            ax_ht.legend(loc='upper right', frameon=True, facecolor='#ffffff', edgecolor='#e2e8f0', fontsize=8)
             plt.tight_layout()
             render_fig_inline(fig_ht)
 
@@ -1103,20 +1184,21 @@ with tab_flujo:
                 df_filtered['utilidad_neta'],
                 bins=k_sturges_m,
                 kde=True,
-                color='#2563eb',
-                edgecolor='#1e3a8a',
-                alpha=0.65,
+                color='#3b82f6',
+                edgecolor='white',
+                linewidth=0.8,
+                alpha=0.6,
                 ax=ax_hu,
             )
-            ax_hu.axvline(media_u, color='#e11d48', linestyle='--', lw=2, label=f'Media: ${media_u:,.0f}')
-            ax_hu.axvline(mediana_u, color='#059669', linestyle='-', lw=2, label=f'Mediana: ${mediana_u:,.0f}')
-            ax_hu.axvline(0, color='#334155', linestyle=':', lw=1.4, label='Equilibrio ($0)')
+            ax_hu.axvline(media_u, color='#ef4444', linestyle='--', lw=1.8, label=f'Media: ${media_u:,.0f}')
+            ax_hu.axvline(mediana_u, color='#059669', linestyle='-', lw=1.8, label=f'Mediana: ${mediana_u:,.0f}')
+            ax_hu.axvline(0, color='#94a3b8', linestyle=':', lw=1.2, label='Equilibrio ($0)')
             sns.despine(ax=ax_hu)
-            ax_hu.set_title(f"Utilidad Neta Mensual (n={n_obs_m}, k={k_sturges_m} bins)", fontsize=9.8, fontweight='bold')
-            ax_hu.set_xlabel("Utilidad Neta Mensual por Activo (MXN)")
-            ax_hu.set_ylabel("Frecuencia (Activo-Mes)")
+            ax_hu.set_title(f"Utilidad Neta Mensual (k={k_sturges_m} bins Sturges)", fontsize=9.5, fontweight='bold')
+            ax_hu.set_xlabel("Utilidad Neta Mensual por Activo (MXN)", fontsize=8.8)
+            ax_hu.set_ylabel("Frecuencia", fontsize=8.8)
             ax_hu.xaxis.set_major_formatter('${x:,.0f}')
-            ax_hu.legend(loc='upper left', fontsize=8)
+            ax_hu.legend(loc='upper left', frameon=True, facecolor='#ffffff', edgecolor='#e2e8f0', fontsize=8)
             plt.tight_layout()
             render_fig_inline(fig_hu)
 
@@ -1159,11 +1241,11 @@ with tab_operativo:
                 legend=False,
                 ax=ax_box,
                 linewidth=1.2,
-                fliersize=4.5,
-                boxprops=dict(alpha=0.85),
+                fliersize=4.0,
+                boxprops=dict(alpha=0.88, edgecolor='none'),
             )
-            sns.despine(ax=ax_box)
-            ax_box.set_xlabel("Gasto Mensual por Activo (MXN)")
+            sns.despine(ax=ax_box, left=True)
+            ax_box.set_xlabel("Gasto Mensual por Activo (MXN)", fontsize=8.8)
             ax_box.set_ylabel("")
             ax_box.xaxis.set_major_formatter('${x:,.0f}')
             plt.tight_layout()
@@ -1173,7 +1255,7 @@ with tab_operativo:
             )
 
     with col_scatter:
-        df_inm = df_filtered[df_filtered['renta_mensual'] > 0].drop_duplicates('propiedad')
+        df_inm = df_filtered[df_filtered['renta_mensual'] > 0].drop_duplicates('propiedad').copy()
         r_corr = float(df_inm['valor_propiedad'].corr(df_inm['renta_mensual'])) if len(df_inm) >= 2 else 0.0
         render_chart_header(
             "Gráfica 6 · Diagrama de Dispersión y Regresión (Relación)",
@@ -1189,9 +1271,9 @@ with tab_operativo:
                 y='renta_mensual',
                 hue='categoria',
                 palette=PALETA_CATEGORIAS,
-                s=115,
+                s=110,
                 edgecolor='white',
-                linewidth=1.2,
+                linewidth=1.4,
                 alpha=0.95,
                 ax=ax_scat,
             )
@@ -1204,30 +1286,46 @@ with tab_operativo:
                 ax_scat.plot(
                     x_line,
                     m_pend * x_line + b_inter,
-                    color='#e11d48',
+                    color='#ef4444',
                     linestyle='--',
-                    lw=2.0,
+                    lw=1.8,
                     label=f'Tendencia lineal (R = {r_corr:.2f})',
                 )
 
-            for _, row in df_inm.iterrows():
-                ax_scat.annotate(
-                    row['propiedad'],
-                    (row['valor_propiedad'], row['renta_mensual']),
-                    textcoords="offset points",
-                    xytext=(0, 7),
-                    ha='center',
-                    fontsize=7.8,
-                    fontweight='bold',
-                    color='#000000',
-                )
+            # Destacar únicamente los 2 activos extremos de Cap Rate para evitar traslape de etiquetas
+            df_inm['cap_rate_calc'] = (df_inm['renta_mensual'] * 12.0) / df_inm['valor_propiedad']
+            top_cap = df_inm.sort_values('cap_rate_calc', ascending=False).iloc[0]
+            low_cap = df_inm.sort_values('cap_rate_calc', ascending=True).iloc[0]
+
+            ax_scat.annotate(
+                f"{top_cap['propiedad']}\n(Cap {top_cap['cap_rate_calc']*100:.1f}%)",
+                (top_cap['valor_propiedad'], top_cap['renta_mensual']),
+                textcoords="offset points",
+                xytext=(0, 9),
+                ha='center',
+                fontsize=8.0,
+                fontweight='bold',
+                color='#065f46',
+                bbox=dict(boxstyle="round,pad=0.25", fc="#ecfdf5", ec="#059669", lw=0.8),
+            )
+            ax_scat.annotate(
+                f"{low_cap['propiedad']}\n(Cap {low_cap['cap_rate_calc']*100:.1f}%)",
+                (low_cap['valor_propiedad'], low_cap['renta_mensual']),
+                textcoords="offset points",
+                xytext=(0, -26),
+                ha='center',
+                fontsize=8.0,
+                fontweight='bold',
+                color='#9f1239',
+                bbox=dict(boxstyle="round,pad=0.25", fc="#fff1f2", ec="#f43f5e", lw=0.8),
+            )
 
             sns.despine(ax=ax_scat)
-            ax_scat.set_xlabel("Valor Comercial Estimado (MXN)")
-            ax_scat.set_ylabel("Renta Mensual Fija (MXN)")
+            ax_scat.set_xlabel("Valor Comercial Estimado (MXN)", fontsize=8.8)
+            ax_scat.set_ylabel("Renta Mensual Fija (MXN)", fontsize=8.8)
             ax_scat.xaxis.set_major_formatter('${x:,.0f}')
             ax_scat.yaxis.set_major_formatter('${x:,.0f}')
-            ax_scat.legend(loc='upper left', frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1', fontsize=8)
+            ax_scat.legend(loc='upper left', frameon=True, facecolor='#ffffff', edgecolor='#e2e8f0', fontsize=8)
             plt.tight_layout()
             render_fig_inline(fig_scat)
             render_insight(
@@ -1467,16 +1565,23 @@ with tab_modelos:
             y_vals = comp_ols["modelo_numpy"].predict(x_vals.reshape(-1, 1))
             ax_reg.plot(x_vals, y_vals, color='#e11d48', lw=2.2, label='Recta de Regresión OLS')
 
-            # Etiquetas en puntos
-            for _, r in df_reg.iterrows():
+            # Etiquetas en puntos destacados (evitando saturación visual)
+            df_reg_sorted = df_reg.sort_values('valor_propiedad', ascending=False)
+            top_asset = df_reg_sorted.iloc[0]
+            mid_asset = df_reg_sorted.iloc[len(df_reg_sorted) // 2]
+            low_asset = df_reg_sorted.iloc[-1]
+
+            for r, pos_y in [(top_asset, 8), (mid_asset, 8), (low_asset, -18)]:
                 ax_reg.annotate(
                     r['propiedad'],
                     (r['valor_propiedad'], r['renta_mensual']),
                     textcoords="offset points",
-                    xytext=(0, 6),
+                    xytext=(0, pos_y),
                     ha='center',
-                    fontsize=7.5,
-                    color='#0f172a'
+                    fontsize=7.8,
+                    fontweight='bold',
+                    color='#0f172a',
+                    bbox=dict(boxstyle="round,pad=0.2", fc="#f8fafc", ec="#cbd5e1", lw=0.7),
                 )
 
             sns.despine(ax=ax_reg)
@@ -1761,16 +1866,19 @@ with tab_patrimonio:
 
         fig_fft, (ax_time, ax_spec) = plt.subplots(1, 2, figsize=(11.5, 4.1))
 
-        ax_time.plot(serie_diaria['fecha'], serie_diaria['utilidad_diaria'], color='#2563eb', lw=1.0, alpha=0.85, label='Flujo Diario Agregado (MXN)')
-        ax_time.axhline(np.mean(y_vals), color='#059669', linestyle='--', lw=1.2, label=f'Media diaria: ${np.mean(y_vals):,.0f}')
+        # Suavizado de 14 días para eliminar ruido visual y resaltar tendencia real
+        serie_diaria['rolling_mean'] = serie_diaria['utilidad_diaria'].rolling(14, min_periods=1).mean()
+        ax_time.plot(serie_diaria['fecha'], serie_diaria['utilidad_diaria'], color='#93c5fd', lw=0.75, alpha=0.5, label='Flujo Diario Registrado')
+        ax_time.plot(serie_diaria['fecha'], serie_diaria['rolling_mean'], color='#1d4ed8', lw=2.0, label='Tendencia Suavizada (Media 14d)')
+        ax_time.axhline(np.mean(y_vals), color='#059669', linestyle='--', lw=1.2, label=f'Media: ${np.mean(y_vals):,.0f}')
         sns.despine(ax=ax_time)
-        ax_time.set_title(f"Dominio del Tiempo: Bitácora Diaria ({len(serie_diaria)} días, {len(df_daily_filtered):,} reg.)", fontsize=9.8, fontweight='bold')
-        ax_time.set_ylabel("Flujo Neto Diario (MXN)")
+        ax_time.set_title(f"Dominio del Tiempo: Bitácora Diaria ({len(serie_diaria)} días, {len(df_daily_filtered):,} reg.)", fontsize=9.5, fontweight='bold')
+        ax_time.set_ylabel("Flujo Neto Diario (MXN)", fontsize=8.8)
         ax_time.yaxis.set_major_formatter('${x:,.0f}')
-        ax_time.legend(loc='upper right', fontsize=8)
+        ax_time.legend(loc='upper right', frameon=True, facecolor='#ffffff', edgecolor='#e2e8f0', fontsize=8)
 
-        ax_spec.plot(periodos_dias, mag_op, color='#7c3aed', lw=2.2, label='Amplitud Espectral |X(f)|')
-        ax_spec.fill_between(periodos_dias, mag_op, 0, color='#ddd6fe', alpha=0.5)
+        ax_spec.plot(periodos_dias, mag_op, color='#7c3aed', lw=2.0, label='Amplitud Espectral |X(f)|')
+        ax_spec.fill_between(periodos_dias, mag_op, 0, color='#ede9fe', alpha=0.6)
 
         for ciclo_d, etiqueta_c, col_c in [
             (7.0, 'Ciclo Semanal (~7d)\nSupervisión y Flota', '#ea580c'),
@@ -1780,8 +1888,8 @@ with tab_patrimonio:
             idx_cercano = int(np.argmin(np.abs(periodos_dias - ciclo_d)))
             p_real = float(periodos_dias[idx_cercano])
             m_real = float(mag_op[idx_cercano])
-            ax_spec.axvline(p_real, color=col_c, linestyle='--', alpha=0.8, lw=1.5)
-            ax_spec.scatter([p_real], [m_real], color=col_c, s=55, zorder=5)
+            ax_spec.axvline(p_real, color=col_c, linestyle='--', alpha=0.8, lw=1.3)
+            ax_spec.scatter([p_real], [m_real], color=col_c, s=50, zorder=5)
             ax_spec.annotate(
                 f"{etiqueta_c}\n(T={p_real:.1f}d)",
                 (p_real, m_real),
@@ -1793,9 +1901,9 @@ with tab_patrimonio:
             )
 
         sns.despine(ax=ax_spec)
-        ax_spec.set_title("Dominio de la Frecuencia (FFT Directa): Periodograma T = 1/f", fontsize=9.8, fontweight='bold')
-        ax_spec.set_xlabel("Periodo T = 1 / frecuencia (Días)")
-        ax_spec.set_ylabel("Magnitud Espectral (MXN)")
+        ax_spec.set_title("Dominio de la Frecuencia (FFT Directa): Periodograma T = 1/f", fontsize=9.5, fontweight='bold')
+        ax_spec.set_xlabel("Periodo T = 1 / frecuencia (Días)", fontsize=8.8)
+        ax_spec.set_ylabel("Magnitud Espectral (MXN)", fontsize=8.8)
         ax_spec.set_xlim(4, 42)
         plt.tight_layout()
         render_fig_inline(fig_fft)
@@ -1820,42 +1928,39 @@ with tab_patrimonio:
         colores_dona = [PALETA_CATEGORIAS.get(c, '#64748b') for c in etiquetas_dona]
 
         fig_dona, ax_dona = plt.subplots(figsize=(8.5, 4.4))
-        wedges, texts, autotexts = ax_dona.pie(
+        wedges, _ = ax_dona.pie(
             valores_dona,
             labels=None,
-            autopct='%1.1f%%',
-            pctdistance=0.76,
             startangle=140,
             colors=colores_dona,
-            wedgeprops=dict(width=0.42, edgecolor='white', linewidth=2.5),
-            textprops=dict(fontsize=9.5, fontweight='bold', color='white'),
+            wedgeprops=dict(width=0.40, edgecolor='white', linewidth=2.5),
         )
 
-        ax_dona.text(0, 0.08, 'Patrimonio Total', ha='center', va='center', fontsize=9, color='#334155', fontweight='bold')
+        ax_dona.text(0, 0.10, 'Patrimonio Total', ha='center', va='center', fontsize=9.2, color='#64748b', fontweight='600')
         ax_dona.text(
             0,
             -0.08,
-            f"${patrimonio_total_sel:,.0f}\nMXN",
+            f"${patrimonio_total_sel/1e6:.2f}M\nMXN",
             ha='center',
             va='center',
-            fontsize=11.5,
+            fontsize=15.0,
             fontweight='bold',
-            color='#000000',
+            color='#0f172a',
         )
 
         legend_labels = [
-            f"{cat}: ${val:,.0f} MXN ({val/patrimonio_total_sel*100:.1f}%)"
+            f"{cat}: ${val:,.0f} ({val/patrimonio_total_sel*100:.1f}%)"
             for cat, val in zip(etiquetas_dona, valores_dona)
         ]
         ax_dona.legend(
             wedges,
             legend_labels,
-            title='Distribución por Categoría',
+            title='Categoría de Inmuebles',
             loc='center left',
-            bbox_to_anchor=(0.98, 0.5),
+            bbox_to_anchor=(0.95, 0.5),
             frameon=True,
             facecolor='#ffffff',
-            edgecolor='#cbd5e1',
+            edgecolor='#e2e8f0',
             fontsize=8.5,
         )
         ax_dona.axis('equal')
