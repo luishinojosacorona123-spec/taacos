@@ -964,107 +964,83 @@ with tab_flujo:
     df_mes = df_mes_kpi.copy()
     meses_superavit = int((df_mes['utilidad_neta'] > 0).sum()) if not df_mes.empty else 0
     gasto_ene_feb = float(df_mes[df_mes['num_mes'].isin([1, 2])]['gasto_operativo'].sum()) if not df_mes.empty else 0.0
+    gasto_ordinario = max(0.0, total_gastos - gasto_ene_feb)
 
     render_chart_header(
-        f"Gráfica 1 · Serie de Líneas ({num_meses_sel} Meses Seleccionados)",
-        "¿Cómo evoluciona el flujo de caja mensual (ingresos, gastos y utilidad neta) en el periodo seleccionado?",
-        f"{meses_superavit} de {len(df_mes)} meses operan en superávit; utilidad acumulada de ${total_utilidad:,.0f} MXN ({margen_neto:.1f}% de margen) tras absorber ${gasto_ene_feb:,.0f} MXN de CAPEX inicial.",
+        f"Gráfica 1 · Gráfica de Dona (Distribución del Flujo de Caja · {num_meses_sel} Meses)",
+        "¿Cómo se distribuye el total de ingresos cobrados entre ganancia libre, gastos operativos e inversión CAPEX?",
+        f"De ${total_ingresos:,.0f} MXN cobrados, el {margen_neto:.1f}% (${total_utilidad:,.0f} MXN) es ganancia neta líquida tras absorber ${gasto_ene_feb:,.0f} MXN de CAPEX inicial.",
     )
 
-    if not df_mes.empty:
-        fig_hero, ax_hero = plt.subplots(figsize=(10.5, 4.0))
-        # Líneas continuas limpias con alta legibilidad ejecutiva
-        ax_hero.plot(
-            df_mes['mes'],
-            df_mes['ingreso_renta'],
-            label='Ingresos por Rentas',
-            color='#2563eb',
-            lw=2.2,
-            solid_capstyle='round',
-        )
-        ax_hero.plot(
-            df_mes['mes'],
-            df_mes['gasto_operativo'],
-            label='Gastos Operativos y CAPEX',
-            color='#f43f5e',
-            lw=2.0,
-            linestyle='--',
-            solid_capstyle='round',
-        )
-        ax_hero.plot(
-            df_mes['mes'],
-            df_mes['utilidad_neta'],
-            label='Utilidad Neta Líquida',
-            color='#059669',
-            lw=2.8,
-            solid_capstyle='round',
-        )
+    if total_ingresos > 0 and not df_mes.empty:
+        fig_dona_flujo, ax_df = plt.subplots(figsize=(9.0, 4.6))
 
-        ax_hero.axhline(0, color='#94a3b8', linestyle=':', lw=1.0)
-        ax_hero.fill_between(
-            df_mes['mes'],
-            df_mes['utilidad_neta'],
-            0,
-            where=(df_mes['utilidad_neta'] >= 0),
-            color='#10b981',
-            alpha=0.12,
-            label='Superávit Líquido',
-        )
-        ax_hero.fill_between(
-            df_mes['mes'],
-            df_mes['utilidad_neta'],
-            0,
-            where=(df_mes['utilidad_neta'] < 0),
-            color='#f43f5e',
-            alpha=0.12,
-            label='Inversión CAPEX Inicial',
-        )
+        if gasto_ene_feb > 0 and total_utilidad >= 0:
+            flujo_vals = [total_utilidad, gasto_ordinario, gasto_ene_feb]
+            flujo_labels = ["Utilidad Neta Libre", "Gastos Operativos Regulares", "Inversión Mayor (CAPEX)"]
+            flujo_colors = ["#10b981", "#3b82f6", "#f43f5e"]
+        elif total_utilidad >= 0:
+            flujo_vals = [total_utilidad, total_gastos]
+            flujo_labels = ["Utilidad Neta Libre", "Gastos Operativos"]
+            flujo_colors = ["#10b981", "#f43f5e"]
+        else:
+            flujo_vals = [total_ingresos, total_gastos]
+            flujo_labels = ["Ingreso Cobrado", "Gastos Totales"]
+            flujo_colors = ["#3b82f6", "#f43f5e"]
 
-        # Destacar exclusivamente los 2 hitos críticos para eliminar saturación de texto
-        max_idx = df_mes['utilidad_neta'].idxmax()
-        m_max = df_mes.loc[max_idx, 'mes']
-        v_max = df_mes.loc[max_idx, 'utilidad_neta']
-        ax_hero.scatter([m_max], [v_max], color='#059669', s=65, zorder=5)
-        ax_hero.annotate(
-            f"Máx Superávit\n${v_max:,.0f}",
-            (m_max, v_max),
-            textcoords="offset points",
-            xytext=(0, 10),
-            ha='center',
-            fontsize=8.0,
-            fontweight='bold',
-            color='#065f46',
-            bbox=dict(boxstyle="round,pad=0.25", fc="#ecfdf5", ec="#059669", lw=0.8),
+        wedges_f, _ = ax_df.pie(
+            flujo_vals,
+            labels=None,
+            startangle=90,
+            colors=flujo_colors,
+            wedgeprops=dict(width=0.38, edgecolor="white", linewidth=2.5),
         )
+        ax_df.axis("equal")
 
-        min_idx = df_mes['utilidad_neta'].idxmin()
-        v_min = df_mes.loc[min_idx, 'utilidad_neta']
-        if v_min < 0:
-            m_min = df_mes.loc[min_idx, 'mes']
-            ax_hero.scatter([m_min], [v_min], color='#f43f5e', s=65, zorder=5)
-            ax_hero.annotate(
-                f"Absorción CAPEX\n${v_min:,.0f}",
-                (m_min, v_min),
-                textcoords="offset points",
-                xytext=(0, -26),
-                ha='center',
-                fontsize=8.0,
-                fontweight='bold',
-                color='#9f1239',
-                bbox=dict(boxstyle="round,pad=0.25", fc="#fff1f2", ec="#f43f5e", lw=0.8),
-            )
+        # Texto KPI central de la dona
+        ax_df.text(0, 0.12, "Flujo Total Cobrado", ha="center", va="center", fontsize=9.5, color="#64748b", fontweight="600")
+        ax_df.text(0, -0.05, f"${total_ingresos:,.0f}", ha="center", va="center", fontsize=21.0, color="#0f172a", fontweight="bold")
+        ax_df.text(0, -0.22, f"Margen Libre: {margen_neto:.1f}%", ha="center", va="center", fontsize=9.2, color="#059669", fontweight="bold")
 
-        sns.despine(ax=ax_hero)
-        ax_hero.set_ylabel("Monto Mensual (MXN)", fontsize=8.8)
-        ax_hero.yaxis.set_major_formatter('${x:,.0f}')
-        ax_hero.legend(loc='upper right', frameon=True, facecolor='#ffffff', edgecolor='#e2e8f0', fontsize=8.2)
+        legend_items_f = [
+            f"{lbl}: ${val:,.0f} MXN ({val/total_ingresos*100:.1f}%)"
+            for lbl, val in zip(flujo_labels, flujo_vals)
+        ]
+        ax_df.legend(
+            wedges_f,
+            legend_items_f,
+            loc="lower center",
+            bbox_to_anchor=(0.5, -0.14),
+            ncol=3 if gasto_ene_feb > 0 else 2,
+            frameon=True,
+            facecolor="#ffffff",
+            edgecolor="#e2e8f0",
+            fontsize=8.5,
+        )
         plt.tight_layout()
-        render_fig_inline(fig_hero)
+        render_fig_inline(fig_dona_flujo)
+
         render_insight(
-            f"<b>Lectura ejecutiva:</b> En la selección actual ({num_meses_sel} meses), los ingresos suman <b>${total_ingresos:,.0f} MXN</b> "
-            f"y los gastos <b>${total_gastos:,.0f} MXN</b>, dejando una ganancia libre de <b>${total_utilidad:,.0f} MXN ({margen_neto:.1f}%)</b>. "
-            "Nota: Noviembre y Diciembre representan el escenario de cierre anual programado."
+            f"<b>Lectura ejecutiva del flujo:</b> En el periodo seleccionado ({num_meses_sel} meses), se cobraron <b>${total_ingresos:,.0f} MXN</b> en rentas. "
+            f"La ganancia neta líquida asciende a <b>${total_utilidad:,.0f} MXN ({margen_neto:.1f}%)</b>, "
+            f"mientras que los gastos de operación sumaron <b>${gasto_ordinario:,.0f} MXN</b> "
+            f"y la inversión CAPEX inicial de adecuaciones requirió <b>${gasto_ene_feb:,.0f} MXN</b>."
         )
+
+        with st.expander("Ver línea de tiempo mensual (Enero a Diciembre)"):
+            fig_hero, ax_hero = plt.subplots(figsize=(10.5, 3.8))
+            ax_hero.plot(df_mes['mes'], df_mes['ingreso_renta'], label='Ingresos por Rentas', color='#2563eb', lw=2.2, solid_capstyle='round')
+            ax_hero.plot(df_mes['mes'], df_mes['gasto_operativo'], label='Gastos Operativos y CAPEX', color='#f43f5e', lw=2.0, linestyle='--', solid_capstyle='round')
+            ax_hero.plot(df_mes['mes'], df_mes['utilidad_neta'], label='Utilidad Neta Líquida', color='#059669', lw=2.8, solid_capstyle='round')
+            ax_hero.axhline(0, color='#94a3b8', linestyle=':', lw=1.0)
+            ax_hero.fill_between(df_mes['mes'], df_mes['utilidad_neta'], 0, where=(df_mes['utilidad_neta'] >= 0), color='#10b981', alpha=0.12, label='Superávit Líquido')
+            ax_hero.fill_between(df_mes['mes'], df_mes['utilidad_neta'], 0, where=(df_mes['utilidad_neta'] < 0), color='#f43f5e', alpha=0.12, label='Inversión CAPEX Inicial')
+            sns.despine(ax=ax_hero)
+            ax_hero.set_ylabel("Monto Mensual (MXN)", fontsize=8.8)
+            ax_hero.yaxis.set_major_formatter('${x:,.0f}')
+            ax_hero.legend(loc='upper right', frameon=True, facecolor='#ffffff', edgecolor='#e2e8f0', fontsize=8.2)
+            plt.tight_layout()
+            render_fig_inline(fig_hero)
 
     col_bar, col_pie = st.columns(2)
 
@@ -1114,42 +1090,44 @@ with tab_flujo:
             )
 
     with col_pie:
-        pct_gasto = (total_gastos / total_ingresos * 100.0) if total_ingresos > 0 else 0.0
+        df_cat_renta = df_filtered[df_filtered['renta_mensual'] > 0].drop_duplicates('propiedad').groupby('categoria')['renta_mensual'].sum().sort_values(ascending=False)
+        total_renta_cat = float(df_cat_renta.sum()) if not df_cat_renta.empty else 0.0
+
         render_chart_header(
-            "Gráfica 3 · Gráfica de Dona (Composición Sincronizada)",
-            f"¿Cómo se dividen los ${total_ingresos:,.0f} MXN de ingresos entre gastos y ganancia libre?",
-            f"El {margen_neto:.1f}% (${total_utilidad:,.0f} MXN) es ganancia neta libre y el {pct_gasto:.1f}% (${total_gastos:,.0f} MXN) son gastos.",
+            "Gráfica 3 · Gráfica de Dona (Composición por Categoría)",
+            "¿Cómo se distribuye la renta mensual fija entre las categorías del portafolio?",
+            f"Casas lidera con ${df_cat_renta.get('Casas', 0):,.0f} MXN/mes ({df_cat_renta.get('Casas', 0)/total_renta_cat*100:.1f}%), seguido de Terrenos con ${df_cat_renta.get('Terrenos', 0):,.0f} MXN/mes." if total_renta_cat > 0 else "Sin categorías seleccionadas.",
         )
 
-        if total_ingresos > 0 and total_utilidad >= 0:
+        if total_renta_cat > 0:
             fig_pie, ax_pie = plt.subplots(figsize=(7.5, 4.4))
-            pie_vals = [total_utilidad, total_gastos]
-            pie_labels = ['Ganancia Libre', 'Gastos y Adecuaciones']
-            pie_colors = ['#10b981', '#f43f5e']
+            cats_labels = df_cat_renta.index.tolist()
+            cats_vals = df_cat_renta.values.tolist()
+            cats_colors = [PALETA_CATEGORIAS.get(c, '#64748b') for c in cats_labels]
 
-            wedges, _ = ax_pie.pie(
-                pie_vals,
+            wedges_c, _ = ax_pie.pie(
+                cats_vals,
                 labels=None,
-                startangle=90,
-                colors=pie_colors,
+                startangle=140,
+                colors=cats_colors,
                 wedgeprops=dict(width=0.38, edgecolor='white', linewidth=2.5),
             )
             ax_pie.axis('equal')
 
-            # KPI centralizado en el orificio de la dona
-            ax_pie.text(0, 0.12, "Margen Neto", ha='center', va='center', fontsize=9.2, color='#64748b', fontweight='600')
-            ax_pie.text(0, -0.05, f"{margen_neto:.1f}%", ha='center', va='center', fontsize=19.0, color='#0f172a', fontweight='bold')
-            ax_pie.text(0, -0.21, f"${total_utilidad:,.0f} MXN", ha='center', va='center', fontsize=8.8, color='#059669', fontweight='bold')
+            # KPI central de categoría
+            ax_pie.text(0, 0.12, "Renta Total Fija", ha='center', va='center', fontsize=9.2, color='#64748b', fontweight='600')
+            ax_pie.text(0, -0.05, f"${total_renta_cat:,.0f}", ha='center', va='center', fontsize=18.5, color='#0f172a', fontweight='bold')
+            ax_pie.text(0, -0.21, "11 Activos Activos", ha='center', va='center', fontsize=8.8, color='#059669', fontweight='bold')
 
-            legend_items = [
-                f"{lbl}: ${val:,.0f} ({val/total_ingresos*100:.1f}%)"
-                for lbl, val in zip(pie_labels, pie_vals)
+            legend_cats = [
+                f"{cat}: ${val:,.0f} ({val/total_renta_cat*100:.1f}%)"
+                for cat, val in zip(cats_labels, cats_vals)
             ]
             ax_pie.legend(
-                wedges,
-                legend_items,
+                wedges_c,
+                legend_cats,
                 loc='lower center',
-                bbox_to_anchor=(0.5, -0.12),
+                bbox_to_anchor=(0.5, -0.14),
                 ncol=2,
                 frameon=True,
                 facecolor='#ffffff',
@@ -1159,11 +1137,11 @@ with tab_flujo:
             plt.tight_layout()
             render_fig_inline(fig_pie)
             render_insight(
-                f"<b>Conciliación con el encabezado:</b> De <b>${total_ingresos:,.0f} MXN</b> cobrados en los {num_meses_sel} meses seleccionados, "
-                f"<b>${total_utilidad:,.0f} MXN ({margen_neto:.1f}%)</b> quedan libres para el propietario."
+                f"<b>Diversificación por activo:</b> El portafolio genera <b>${total_renta_cat:,.0f} MXN/mes</b> de renta contratada fija, "
+                f"concentrando el <b>{df_cat_renta.iloc[0]/total_renta_cat*100:.1f}%</b> en su categoría principal (<i>{df_cat_renta.index[0]}</i>)."
             )
         else:
-            st.info("El periodo seleccionado presenta utilidad acumulada negativa o sin ingresos para graficar proporción circular.")
+            st.info("Sin datos para graficar distribución por categoría.")
 
     # 4. HISTOGRAMA DOBLE CON REGLA DE STURGES: DISTRIBUCIÓN DEL TICKET DIARIO Y DE LA UTILIDAD MENSUAL
     tickets_diarios = df_daily_filtered.loc[df_daily_filtered['ingreso_diario'] > 0, 'ingreso_diario'] if (df_daily_filtered is not None and not df_daily_filtered.empty) else df_filtered.loc[df_filtered['ingreso_renta'] > 0, 'ingreso_renta']
