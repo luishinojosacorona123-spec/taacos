@@ -1454,29 +1454,115 @@ with tab_modelos:
         serie_diaria = preparar_serie_diaria_agregada(df_para_serie)
         descomp = ejecutar_descomposicion_serie(serie_diaria, periodo=7)
 
-        fig_ts, axes_ts = plt.subplots(4, 1, figsize=(10.5, 7.5), sharex=True)
-        # Observado
-        axes_ts[0].plot(descomp["observado"].index, descomp["observado"], color="#2563eb", lw=1.2)
-        axes_ts[0].set_title("Serie Observada $Y_t$ (Ingreso Diario Total MXN)", fontsize=9.5, fontweight="bold")
-        axes_ts[0].yaxis.set_major_formatter("${x:,.0f}")
-        # Tendencia
-        axes_ts[1].plot(descomp["tendencia"].index, descomp["tendencia"], color="#059669", lw=2.0)
-        axes_ts[1].set_title("Componente de Tendencia $T_t$ (Media Móvil Centrada 7 Días)", fontsize=9.5, fontweight="bold")
-        axes_ts[1].yaxis.set_major_formatter("${x:,.0f}")
-        # Estacionalidad
-        axes_ts[2].plot(descomp["estacionalidad"].index, descomp["estacionalidad"], color="#7c3aed", lw=1.2)
-        axes_ts[2].set_title("Componente Estacional $S_t$ (Ciclo Semanal Periódico de 7 Días)", fontsize=9.5, fontweight="bold")
-        axes_ts[2].yaxis.set_major_formatter("${x:,.0f}")
-        # Residuo
-        axes_ts[3].plot(descomp["residuo"].index, descomp["residuo"], color="#ea580c", lw=0.9, alpha=0.85)
-        axes_ts[3].axhline(0, color="#334155", linestyle="--", lw=1.0)
-        axes_ts[3].set_title("Componente Residual / Irregular $I_t$ ($I_t = Y_t - T_t - S_t$)", fontsize=9.5, fontweight="bold")
-        axes_ts[3].yaxis.set_major_formatter("${x:,.0f}")
+        # 1. Gráfica Principal Simplificada: Serie Observada Y_t con Tendencia T_t Superpuesta
+        fig_ts_main, ax_ts_main = plt.subplots(figsize=(10.5, 3.8))
+        ax_ts_main.plot(descomp["observado"].index, descomp["observado"], color="#93c5fd", lw=0.9, alpha=0.6, label="Serie Observada $Y_t$ (Ingreso Diario)")
+        ax_ts_main.fill_between(descomp["observado"].index, descomp["observado"], descomp["tendencia"], color="#eff6ff", alpha=0.45)
+        ax_ts_main.plot(descomp["tendencia"].index, descomp["tendencia"], color="#059669", lw=2.4, label="Tendencia $T_t$ (Media Móvil Centrada 7 Días)")
 
-        for ax in axes_ts:
-            sns.despine(ax=ax)
+        # Hitos clave de tendencia
+        t_max_idx = descomp["tendencia"].idxmax()
+        t_max_val = descomp["tendencia"].loc[t_max_idx]
+        ax_ts_main.scatter([t_max_idx], [t_max_val], color="#059669", s=60, zorder=5)
+        ax_ts_main.annotate(
+            f"Pico de Ocupación\n${t_max_val:,.0f} MXN/día",
+            (t_max_idx, t_max_val),
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha='center',
+            fontsize=8.0,
+            fontweight='bold',
+            color='#065f46',
+            bbox=dict(boxstyle="round,pad=0.25", fc="#ecfdf5", ec="#059669", lw=0.8),
+        )
+
+        sns.despine(ax=ax_ts_main)
+        ax_ts_main.set_title("Evolución Temporal: Serie Diaria Observada y Tendencia Suavizada $T_t$", fontsize=9.8, fontweight="bold")
+        ax_ts_main.set_ylabel("Ingreso Diario (MXN)", fontsize=8.8)
+        ax_ts_main.yaxis.set_major_formatter("${x:,.0f}")
+        ax_ts_main.legend(loc="upper left", frameon=True, facecolor="#ffffff", edgecolor="#e2e8f0", fontsize=8.2)
         plt.tight_layout()
-        render_fig_inline(fig_ts)
+        render_fig_inline(fig_ts_main)
+
+        # 2. Descomposición de Componentes Simplificada (Estacionalidad Semanal + Ruido)
+        col_est, col_res = st.columns(2)
+        with col_est:
+            # Perfil Semanal Limpio de Estacionalidad S_t (Lunes a Domingo)
+            dias_map = {0: "Lunes", 1: "Martes", 2: "Miércoles", 3: "Jueves", 4: "Viernes", 5: "Sábado", 6: "Domingo"}
+            s_serie = descomp["estacionalidad"]
+            df_est = pd.DataFrame({"dia_num": s_serie.index.dayofweek, "efecto": s_serie.values}).groupby("dia_num").mean().reset_index()
+            df_est["dia_nombre"] = df_est["dia_num"].map(dias_map)
+            df_est = df_est.sort_values("dia_num")
+
+            fig_est, ax_est = plt.subplots(figsize=(7.2, 3.6))
+            bar_cols = ["#059669" if val >= 0 else "#e11d48" for val in df_est["efecto"]]
+            bars_est = ax_est.bar(df_est["dia_nombre"], df_est["efecto"], color=bar_cols, width=0.55, alpha=0.88)
+            ax_est.axhline(0, color="#64748b", linestyle="--", lw=0.9)
+
+            for b in bars_est:
+                h = b.get_height()
+                ax_est.text(
+                    b.get_x() + b.get_width() / 2,
+                    h + (1200 if h >= 0 else -2800),
+                    f"{'+' if h >= 0 else ''}${h/1000:,.1f}k",
+                    ha='center',
+                    fontsize=7.8,
+                    fontweight='bold',
+                    color='#065f46' if h >= 0 else '#9f1239'
+                )
+
+            sns.despine(ax=ax_est)
+            ax_est.set_title("Componente Estacional $S_t$: Impacto Neto por Día de la Semana", fontsize=9.5, fontweight="bold")
+            ax_est.set_ylabel("Impacto Estacional (MXN)", fontsize=8.8)
+            ax_est.yaxis.set_major_formatter("${x:,.0f}")
+            max_eff = max(abs(df_est["efecto"].max()), abs(df_est["efecto"].min()))
+            ax_est.set_ylim(-max_eff * 1.35, max_eff * 1.35)
+            plt.tight_layout()
+            render_fig_inline(fig_est)
+
+        with col_res:
+            # Distribución Limpia del Residuo / Ruido Blanco I_t
+            res_vals = descomp["residuo"].dropna()
+            fig_res, ax_res = plt.subplots(figsize=(7.2, 3.6))
+            sns.histplot(res_vals, kde=True, color="#ea580c", edgecolor="white", linewidth=0.8, alpha=0.6, ax=ax_res)
+            ax_res.axvline(0, color="#334155", linestyle="--", lw=1.2, label="Media = $0")
+
+            std_res = float(res_vals.std())
+            ax_res.axvline(std_res, color="#d97706", linestyle=":", lw=1.0, label=f"+1σ (${std_res/1000:,.1f}k)")
+            ax_res.axvline(-std_res, color="#d97706", linestyle=":", lw=1.0, label=f"-1σ (-${std_res/1000:,.1f}k)")
+
+            sns.despine(ax=ax_res)
+            ax_res.set_title("Componente Residual $I_t$: Distribución del Ruido Blanco", fontsize=9.5, fontweight="bold")
+            ax_res.set_xlabel("Magnitud del Residuo (MXN)", fontsize=8.8)
+            ax_res.set_ylabel("Frecuencia", fontsize=8.8)
+            ax_res.xaxis.set_major_formatter("${x:,.0f}")
+            ax_res.legend(loc="upper right", frameon=True, facecolor="#ffffff", edgecolor="#e2e8f0", fontsize=7.8)
+            plt.tight_layout()
+            render_fig_inline(fig_res)
+
+        with st.expander("Ver desglose clásico de 4 paneles lineales"):
+            fig_ts_classic, axes_ts = plt.subplots(4, 1, figsize=(10.5, 6.5), sharex=True)
+            axes_ts[0].plot(descomp["observado"].index, descomp["observado"], color="#2563eb", lw=0.9, alpha=0.85)
+            axes_ts[0].set_title("Serie Observada $Y_t$", fontsize=8.8, fontweight="bold")
+            axes_ts[0].yaxis.set_major_formatter("${x:,.0f}")
+
+            axes_ts[1].plot(descomp["tendencia"].index, descomp["tendencia"], color="#059669", lw=1.6)
+            axes_ts[1].set_title("Tendencia $T_t$", fontsize=8.8, fontweight="bold")
+            axes_ts[1].yaxis.set_major_formatter("${x:,.0f}")
+
+            axes_ts[2].plot(descomp["estacionalidad"].index, descomp["estacionalidad"], color="#7c3aed", lw=0.8, alpha=0.8)
+            axes_ts[2].set_title("Estacionalidad Semanal $S_t$", fontsize=8.8, fontweight="bold")
+            axes_ts[2].yaxis.set_major_formatter("${x:,.0f}")
+
+            axes_ts[3].plot(descomp["residuo"].index, descomp["residuo"], color="#ea580c", lw=0.7, alpha=0.7)
+            axes_ts[3].axhline(0, color="#334155", linestyle="--", lw=0.9)
+            axes_ts[3].set_title("Residuo $I_t$", fontsize=8.8, fontweight="bold")
+            axes_ts[3].yaxis.set_major_formatter("${x:,.0f}")
+
+            for ax in axes_ts:
+                sns.despine(ax=ax)
+            plt.tight_layout()
+            render_fig_inline(fig_ts_classic)
 
         render_insight(
             f"<b>Justificación del Modelo Aditivo:</b> Se eligió la estructura aditiva <i>Y_t = T_t + S_t + I_t</i> porque la dispersión de las rentas "
